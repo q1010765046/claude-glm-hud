@@ -48,50 +48,5 @@ export interface CacheFile {
  */
 export interface RenderContext {
   stdin: StdinData;
-  config: HudConfig;
   glmUsage?: GlmUsageData;
 }
-
-/**
- * 插件配置
- */
-export interface HudConfig {
-  lineLayout: 'compact' | 'expanded';
-  showSeparators: boolean;
-  display: {
-    showModel: boolean;
-    showContext: boolean;
-    showContextBar: boolean;
-    showTokenBreakdown: boolean;
-    showUsage: boolean;
-    showMcp: boolean;
-    showDuration: boolean;
-  };
-  colors: {
-    low: string;
-    medium: string;
-    high: string;
-  };
-}
-
-/**
- * 默认配置
- */
-export const DEFAULT_CONFIG: HudConfig = {
-  lineLayout: 'compact',
-  showSeparators: false,
-  display: {
-    showModel: true,
-    showContext: true,
-    showContextBar: true,
-    showTokenBreakdown: true,
-    showUsage: true,
-    showMcp: true,
-    showDuration: false,
-  },
-  colors: {
-    low: 'green',
-    medium: 'yellow',
-    high: 'red',
-  },
-};

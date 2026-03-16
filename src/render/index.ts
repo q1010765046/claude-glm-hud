@@ -5,6 +5,7 @@
 import { RenderContext } from '../types.js';
 import { formatProgressBar } from './utils.js';
 import { formatResetTime } from './utils.js';
+import { readContextCache, writeContextCache } from '../cache.js';
 
 /**
  * 渲染输出（老版本格式 + 上下文）
@@ -55,20 +56,70 @@ function renderContextInfo(stdin: any): string | null {
   const cw = stdin.context_window;
   if (!cw) return null;
 
+  // 计算总 Token 使用量（包含所有类型）
+  const usage = cw.current_usage;
+
+  // 调试：输出原始数据（仅在 DEBUG 模式下）
+  if (process.env.DEBUG === '1') {
+    console.error('[GLM-HUD Debug] context_window:', JSON.stringify(cw, null, 2));
+  }
+
+  const inputTokens = usage?.input_tokens ?? 0;
+  const cacheCreationTokens = usage?.cache_creation_input_tokens ?? 0;
+  const cacheReadTokens = usage?.cache_read_input_tokens ?? 0;
+  const totalUsed = inputTokens + cacheCreationTokens + cacheReadTokens;
+
+  // 优先使用 Claude Code 提供的百分比，否则自行计算
   const percent = cw.used_percentage ?? (
-    cw.context_window_size && cw.current_usage?.input_tokens
-      ? Math.round((cw.current_usage.input_tokens / cw.context_window_size) * 100)
+    cw.context_window_size && totalUsed > 0
+      ? Math.round((totalUsed / cw.context_window_size) * 100)
       : null
   );
 
-  if (percent === null) return null;
-
-  const used = cw.current_usage?.input_tokens ?? 0;
   const total = cw.context_window_size ?? 200000;
-  const usedStr = formatTokens(used);
+
+  // 检测是否需要使用缓存（思考过程中数据可能为 0）
+  let displayUsed = totalUsed;
+  let displayPercent = percent;
+
+  // 如果当前数据为 0 或空，尝试使用缓存
+  if ((totalUsed === 0 || percent === 0 || percent === null) && stdin.model?.display_name) {
+    const cached = readContextCache();
+    if (cached) {
+      // 使用缓存的数据
+      displayUsed = cached.totalUsed;
+      displayPercent = Math.round((cached.totalUsed / cached.contextWindowSize) * 100);
+
+      // 调试输出
+      if (process.env.DEBUG === '1') {
+        console.error('[GLM-HUD Debug] 使用缓存数据:', {
+          cached,
+          current: { totalUsed, percent }
+        });
+      }
+    } else if (process.env.DEBUG === '1') {
+      console.error('[GLM-HUD Debug] 无缓存可用，当前数据:', { totalUsed, percent });
+    }
+  }
+
+  // 只在有有效数据时更新缓存
+  if (totalUsed > 0 && percent !== null && percent > 0) {
+    writeContextCache({
+      inputTokens,
+      cacheCreationTokens,
+      cacheReadTokens,
+      totalUsed,
+      contextWindowSize: total,
+      timestamp: Date.now(),
+    });
+  }
+
+  if (displayPercent === null || displayPercent === 0) return null;
+
+  const usedStr = formatTokens(displayUsed);
   const totalStr = formatTokens(total);
 
-  return `📊上下文:${formatProgressBar(percent)} ${percent}% (${usedStr}/${totalStr})`;
+  return `📊上下文:${formatProgressBar(displayPercent)} ${displayPercent}% (${usedStr}/${totalStr})`;
 }
 
 // 重新导出 formatTokens 供其他模块使用

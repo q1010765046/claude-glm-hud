@@ -10,15 +10,35 @@ import {
   readFileSync,
   writeFileSync,
   mkdirSync,
+  unlinkSync,
 } from 'fs';
 import { CacheFile, GlmUsageData } from './types.js';
 import { CACHE_DIR, CACHE_FILE, CACHE_TTL_MS, CACHE_FAILURE_TTL_MS } from './constants.js';
+
+/**
+ * 上下文缓存数据结构
+ */
+interface ContextCacheData {
+  inputTokens: number;
+  cacheCreationTokens: number;
+  cacheReadTokens: number;
+  totalUsed: number;
+  contextWindowSize: number;
+  timestamp: number;
+}
 
 /**
  * 获取缓存文件路径
  */
 function getCachePath(): string {
   return join(homedir(), CACHE_DIR, CACHE_FILE);
+}
+
+/**
+ * 获取上下文缓存文件路径
+ */
+function getContextCachePath(): string {
+  return join(homedir(), CACHE_DIR, 'context-cache.json');
 }
 
 /**
@@ -85,12 +105,56 @@ export function clearCache(): void {
 
   if (existsSync(cachePath)) {
     try {
-      // 删除缓存文件
-      // 注意：Node.js 没有 removeFileSync，使用 unlink
-      const fs = require('fs');
-      fs.unlinkSync(cachePath);
+      unlinkSync(cachePath);
     } catch {
       // 静默失败
     }
+  }
+}
+
+/**
+ * 读取上下文缓存
+ */
+export function readContextCache(): ContextCacheData | null {
+  const cachePath = getContextCachePath();
+
+  if (!existsSync(cachePath)) {
+    return null;
+  }
+
+  try {
+    const raw = readFileSync(cachePath, 'utf-8');
+    const cache: ContextCacheData = JSON.parse(raw);
+
+    // 上下文缓存有效期 10 秒
+    const now = Date.now();
+    const age = now - cache.timestamp;
+
+    if (age >= 10_000) {
+      return null;
+    }
+
+    return cache;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * 写入上下文缓存
+ */
+export function writeContextCache(data: ContextCacheData): void {
+  const cachePath = getContextCachePath();
+  const cacheDir = join(homedir(), CACHE_DIR);
+
+  try {
+    // 确保缓存目录存在
+    if (!existsSync(cacheDir)) {
+      mkdirSync(cacheDir, { recursive: true });
+    }
+
+    writeFileSync(cachePath, JSON.stringify(data), 'utf-8');
+  } catch {
+    // 静默失败
   }
 }

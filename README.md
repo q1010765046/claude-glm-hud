@@ -7,26 +7,16 @@
 
 ## 功能特性
 
-- 📊 **上下文窗口显示** - 实时显示当前会话的上下文使用情况
-- 🔋 **Token 使用率** - 显示智谱 AI 的 Token 使用配额
-- 🌐 **MCP 使用率** - 显示 MCP 服务器的时间使用率
-- 🎨 **彩色进度条** - 直观的进度条可视化
-- ⚙️ **可配置** - 支持多种布局模式和显示选项
+- **上下文窗口显示** - 实时显示当前会话的上下文使用情况
+- **Token 使用率** - 显示智谱 AI 的 Token 使用配额
+- **MCP 使用率** - 显示 MCP 服务器的时间使用率
+- **彩色进度条** - 直观的薄荷绿进度条可视化
+- **智能缓存** - 上下文数据缓存，思考过程显示更稳定
 
 ## 显示效果
 
-### Compact 模式（单行）
-
 ```
-📊[██████░░░░] 45% (90K/200K) │ 🔋[░░░░░░░░░░] 3% │ 🌐[██████░░░░] 65%
-```
-
-### Expanded 模式（多行）
-
-```
-📊上下文:[██████░░░░] 45% (90K/200K)
-🔋Token:[░░░░░░░░░░] 3%
-🌐MCP:[██████░░░░] 65%
+🔋Token:[██████████░░░░░░░░░░] 50% │ 🔄剩余:[████████████████░░] 80% 3小时32分 │ 🌐MCP:[██████░░░░░░░░░░░░] 30% │ 📊上下文:[███████████████░░░░░░░░░] 45% (90K/200K)
 ```
 
 ## 安装
@@ -79,52 +69,6 @@ npm run build
 
 5. 重启 Claude Code
 
-## 配置
-
-配置文件位于：`~/.claude/claude-glm-hud.json`
-
-### 示例配置
-
-```json
-{
-  "lineLayout": "compact",
-  "showSeparators": false,
-  "display": {
-    "showModel": true,
-    "showContext": true,
-    "showContextBar": true,
-    "showTokenBreakdown": true,
-    "showUsage": true,
-    "showMcp": true,
-    "showDuration": false
-  },
-  "colors": {
-    "low": "green",
-    "medium": "yellow",
-    "high": "red"
-  }
-}
-```
-
-### 配置选项
-
-| 选项 | 类型 | 说明 |
-|------|------|------|
-| `lineLayout` | `'compact' \| 'expanded'` | 布局模式 |
-| `showSeparators` | `boolean` | 是否显示分隔符 |
-| `display.showContext` | `boolean` | 显示上下文窗口 |
-| `display.showContextBar` | `boolean` | 显示上下文进度条 |
-| `display.showTokenBreakdown` | `boolean` | 显示 Token 数量详情 |
-| `display.showUsage` | `boolean` | 显示 Token 使用率 |
-| `display.showMcp` | `boolean` | 显示 MCP 使用率 |
-
-## 命令
-
-插件提供以下命令：
-
-- `/claude-glm-hud:setup` - 自动配置状态栏
-- `/claude-glm-hud:configure` - 修改显示选项
-
 ## 前置条件
 
 使用此插件前，请确保您的 `~/.claude/settings.json` 中已配置智谱 AI 的 API Token：
@@ -159,14 +103,36 @@ npm run watch
 - Node.js 18+
 - esbuild
 
+## 架构说明
+
+```
+src/
+├── index.ts          # 主入口
+├── types.ts          # 类型定义
+├── constants.ts      # 常量
+├── stdin.ts          # stdin JSON 解析
+├── config.ts         # AUTH_TOKEN 配置
+├── glm-api.ts        # GLM API 集成
+├── cache.ts          # 缓存管理
+└── render/           # 渲染模块
+    ├── index.ts      # 渲染协调器
+    └── utils.ts      # 工具函数
+```
+
+## 常见问题
+
+### 状态栏不显示
+
+检查 `~/.claude/settings.json` 中的 statusLine 配置是否正确。
+
+### 上下文数据不更新
+
+确保使用 Claude Code v2.1.6+，该版本支持 context_window 数据。
+
+### GLM API 调用失败
+
+检查 `~/.claude/settings.json` 中的 ANTHROPIC_AUTH_TOKEN 配置是否正确。
+
 ## 许可证
 
-[MIT](LICENSE)
-
-## 贡献
-
-欢迎提交 Issue 和 Pull Request！
-
-## 致谢
-
-- [claude-hud-glm](https://github.com/Siiichenggg/claude-hud-glm) - 参考项目
+MIT
