@@ -31,16 +31,6 @@
 
 ## 安装
 
-### 从 Marketplace 安装（推荐）
-
-在 Claude Code 中执行：
-
-```
-/marketplace
-搜索 "claude-glm-hud"
-点击 Install
-```
-
 ### 手动安装
 
 1. 克隆仓库：
