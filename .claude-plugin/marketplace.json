@@ -1,0 +1,16 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "claude-glm-hud",
+  "owner": {
+    "name": "claude-glm-hud",
+    "email": "noreply@github.com"
+  },
+  "plugins": [
+    {
+      "name": "claude-glm-hud",
+      "source": "./",
+      "category": "productivity",
+      "strict": false
+    }
+  ]
+}

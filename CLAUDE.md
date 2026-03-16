@@ -1,26 +1,112 @@
-# Global Instructions
+# GLM-HUD 项目指南
 
-## Core Directive
-- **Language**: **MANDATORY CHINESE**. You must strictly answer ALL questions in Chinese (Simplified), regardless of the input language or the project's codebase language.
-- **Identity**: You are a senior engineer and architect.
+## 项目概述
 
-## Detailed Rules
+GLM-HUD 是一个 Claude Code 状态栏插件，实时显示智谱 AI Token 使用率和上下文窗口信息。
 
-### 1. 语言强制 (Language Enforcement)
-- **对话**: 必须使用中文（简体）。
-- **思考**: `Thinking Process` 必须使用中文。
-- **文档**: Readme、文档字符串（Docstrings）、提交信息（Commit Messages）必须使用中文。
-- **例外**: 仅代码中的变量名、函数名、类名、关键字保持英文。
+## 架构
 
-### 2. 代码修改规范 (Code Style)
-- **注释**: 清晰简洁的中文注释，**严禁**使用 emoji 或表情符号。
-- **调试日志**: `print` 或 `console.log` 必须统一格式，例如：`[类名::方法名] 变量名: 值`。
-- **重构**: 修改代码时，保持原有的代码风格一致性，不要随意重新格式化无关代码。
+```
+src/
+├── index.ts          # 主入口
+├── types.ts          # 类型定义
+├── constants.ts      # 常量
+├── stdin.ts          # stdin JSON 解析
+├── config.ts         # 配置管理
+├── glm-api.ts        # GLM API 集成
+├── cache.ts          # 缓存管理
+└── render/           # 渲染模块
+    ├── index.ts      # 渲染协调器
+    ├── colors.ts     # 颜色工具
+    ├── utils.ts      # 工具函数
+    ├── context-line.ts    # 上下文行
+    ├── usage-line.ts      # Token 使用率行
+    └── mcp-line.ts        # MCP 使用率行
+```
 
-### 3. 交互体验
-- 如果我输入的指令不清晰，请先用中文询问澄清，而不是猜测。
-- 解释技术方案时，请用中文类比或通俗易懂的方式。
+## 数据流
 
-### 4. 质量保障与交付 (Quality Assurance & Delivery)
-- **执行与验证**: 任何交付的文件、脚本或命令行指令，必须由你自己预先执行和调试。
-- **交付标准**: 只有在验证逻辑闭环、确保没有语法或运行时错误之后，才能输出最终结果。严禁交付未经测试的“半成品”或伪代码。
+```
+Claude Code (每 300ms)
+    ↓ stdin JSON
+├── model.display_name
+├── context_window (新增功能)
+│   ├── context_window_size
+│   ├── current_usage.input_tokens
+│   └── used_percentage
+└── cwd
+    ↓
+src/index.ts (主入口)
+    ↓
+src/glm-api.ts (获取 GLM 使用率)
+    ↓
+src/render/ (渲染)
+    ↓
+stdout (状态栏显示)
+```
+
+## 核心功能
+
+### 上下文窗口显示
+
+- 从 stdin JSON 直接获取上下文数据
+- 支持进度条可视化
+- 自动格式化 Token 数量（K/M）
+- 颜色阈值：绿色 <70%，黄色 70-85%，红色 >85%
+
+### GLM API 集成
+
+- 调用智谱 AI API 获取 Token 使用配额
+- 智能缓存（成功 60s，失败 15s）
+- 异步获取，不阻塞渲染
+
+### 配置系统
+
+- JSON 配置文件
+- 支持 compact/expanded 布局
+- 可配置各个显示选项
+
+## 开发指南
+
+### 添加新的渲染行
+
+1. 在 `src/render/` 创建新文件
+2. 实现 `renderXxxLine(ctx: RenderContext): string | null` 函数
+3. 在 `src/render/index.ts` 中导入并调用
+
+### 修改 API 端点
+
+编辑 `src/constants.ts`：
+```typescript
+export const GLM_API_BASE = 'https://api.z.ai';
+export const GLM_USAGE_ENDPOINT = '/api/monitor/usage/quota/limit';
+```
+
+### 调试
+
+设置环境变量启用调试：
+```bash
+DEBUG=1 npm run dev
+```
+
+## 发布流程
+
+1. 更新版本号（package.json）
+2. 运行 `npm run build`
+3. 提交到 Git
+4. 创建 Git Tag
+5. 运行 `claude marketplace publish`
+
+## 常见问题
+
+### 状态栏不显示
+
+检查 `~/.claude/settings.json` 中的 statusLine 配置
+
+### 上下文数据不更新
+
+确保使用 Claude Code v2.1.6+，该版本支持 context_window 数据
+
+### GLM API 调用失败
+
+检查 `~/.claude/settings.json` 中的 ANTHROPIC_AUTH_TOKEN 配置

@@ -1,57 +1,165 @@
-# GLM-HUD V1.3
+# GLM-HUD
 
-实时显示智谱 AI Token 使用率、剩余重置时间和 MCP 使用率。
+> Claude Code 状态栏插件：实时显示智谱 AI Token 使用率和上下文窗口信息
 
----
+![Version](https://img.shields.io/badge/version-1.0.0-blue)
+![License](https://img.shields.io/badge/license-MIT-green)
 
-## 快速安装
+## 功能特性
 
-在 Claude Code 中输入以下指令：
+- 📊 **上下文窗口显示** - 实时显示当前会话的上下文使用情况
+- 🔋 **Token 使用率** - 显示智谱 AI 的 Token 使用配额
+- 🌐 **MCP 使用率** - 显示 MCP 服务器的时间使用率
+- 🎨 **彩色进度条** - 直观的进度条可视化
+- ⚙️ **可配置** - 支持多种布局模式和显示选项
+
+## 显示效果
+
+### Compact 模式（单行）
 
 ```
-@安装指南.md 自动安装
+📊[██████░░░░] 45% (90K/200K) │ 🔋[░░░░░░░░░░] 3% │ 🌐[██████░░░░] 65%
 ```
 
-安装完成后需要重启 Claude Code。
+### Expanded 模式（多行）
 
----
+```
+📊上下文:[██████░░░░] 45% (90K/200K)
+🔋Token:[░░░░░░░░░░] 3%
+🌐MCP:[██████░░░░] 65%
+```
 
-## 版本更新 (V1.3)
+## 安装
 
-### 新增功能
-- **动态Token读取**：自动从settings.json读取API Token，无需手动配置
-- **30秒自动刷新机制**：statusLine 每30秒自动刷新数据（如无Hook刷新）
-- **Hook刷新重置计时**：Hook触发刷新后，30秒内statusLine不会重复刷新
+### 从 Marketplace 安装（推荐）
 
-### 改进
-- 优化了调试日志机制，生产环境默认关闭
-- 改进了错误处理（使用具体异常类型而非裸except）
-- 添加了文件编码指定，提升跨平台兼容性
+在 Claude Code 中执行：
 
-### 修复
-- 解决了Token使用率显示滞后问题
-- 修复了文件操作可能导致的编码问题
-- 无需手动配置AUTH_TOKEN，安装即用
+```
+/marketplace
+搜索 "claude-glm-hud"
+点击 Install
+```
 
----
+### 手动安装
 
-## 配置说明
+1. 克隆仓库：
+```bash
+git clone https://github.com/q1010765046/claude-glm-hud.git ~/.claude/plugins/claude-glm-hud
+```
 
-| 机制 | 说明 |
-|------|------|
-| SessionStart Hook | 启动时自动查询 Token 使用情况 |
-| Stop Hook | 每次回复结束时自动更新 |
-| 30秒自动刷新 | statusLine 每30秒自动调用API更新（如无Hook刷新） |
-| Hook刷新重置计时 | Hook刷新后，30秒内statusLine不会重复刷新 |
-| 动态Token读取 | 自动从settings.json读取，无需手动配置 |
+2. 安装依赖：
+```bash
+cd ~/.claude/plugins/claude-glm-hud
+npm install
+```
 
-### 性能说明
-- statusLine 每300ms 刷新显示（从缓存读取，无API调用）
-- 每30秒发起一次 GET 请求更新缓存（负载极低）
-- 同步调用可能导致短暂卡顿（<1秒，可接受）
+3. 构建插件：
+```bash
+npm run build
+```
 
----
+4. 配置状态栏：
+编辑 `~/.claude/settings.json`，添加：
+```json
+{
+  "statusLine": {
+    "type": "command",
+    "command": "node ~/.claude/plugins/claude-glm-hud/dist/index.js"
+  }
+}
+```
 
-## 详细说明
+5. 重启 Claude Code
 
-请查看 `安装指南.md` 获取完整的使用说明。
+## 配置
+
+配置文件位于：`~/.claude/claude-glm-hud.json`
+
+### 示例配置
+
+```json
+{
+  "lineLayout": "compact",
+  "showSeparators": false,
+  "display": {
+    "showModel": true,
+    "showContext": true,
+    "showContextBar": true,
+    "showTokenBreakdown": true,
+    "showUsage": true,
+    "showMcp": true,
+    "showDuration": false
+  },
+  "colors": {
+    "low": "green",
+    "medium": "yellow",
+    "high": "red"
+  }
+}
+```
+
+### 配置选项
+
+| 选项 | 类型 | 说明 |
+|------|------|------|
+| `lineLayout` | `'compact' \| 'expanded'` | 布局模式 |
+| `showSeparators` | `boolean` | 是否显示分隔符 |
+| `display.showContext` | `boolean` | 显示上下文窗口 |
+| `display.showContextBar` | `boolean` | 显示上下文进度条 |
+| `display.showTokenBreakdown` | `boolean` | 显示 Token 数量详情 |
+| `display.showUsage` | `boolean` | 显示 Token 使用率 |
+| `display.showMcp` | `boolean` | 显示 MCP 使用率 |
+
+## 命令
+
+插件提供以下命令：
+
+- `/claude-glm-hud:setup` - 自动配置状态栏
+- `/claude-glm-hud:configure` - 修改显示选项
+
+## 前置条件
+
+使用此插件前，请确保您的 `~/.claude/settings.json` 中已配置智谱 AI 的 API Token：
+
+```json
+{
+  "env": {
+    "ANTHROPIC_AUTH_TOKEN": "您的智谱AI_API_Token"
+  }
+}
+```
+
+## 开发
+
+```bash
+# 安装依赖
+npm install
+
+# 开发模式
+npm run dev
+
+# 构建
+npm run build
+
+# 监听模式
+npm run watch
+```
+
+## 技术栈
+
+- TypeScript
+- Node.js 18+
+- esbuild
+
+## 许可证
+
+[MIT](LICENSE)
+
+## 贡献
+
+欢迎提交 Issue 和 Pull Request！
+
+## 致谢
+
+- [claude-hud-glm](https://github.com/Siiichenggg/claude-hud-glm) - 参考项目

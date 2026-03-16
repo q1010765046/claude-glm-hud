@@ -10,6 +10,14 @@ venv/
 env/
 ENV/
 
+# Node.js / TypeScript
+node_modules/
+dist/
+*.tsbuildinfo
+.esbuild*
+package-lock.json
+npm-debug.log*
+
 # 本地测试/缓存文件
 token_cache.json
 *.log

@@ -1,0 +1,20 @@
+{
+  "name": "claude-glm-hud",
+  "description": "实时显示智谱 AI Token 使用率和 Claude Code 上下文窗口信息",
+  "version": "1.0.0",
+  "author": {
+    "name": "claude-glm-hud"
+  },
+  "homepage": "https://github.com/q1010765046/claude-glm-hud",
+  "repository": "https://github.com/q1010765046/claude-glm-hud",
+  "license": "MIT",
+  "keywords": [
+    "statusline",
+    "hud",
+    "glm",
+    "zhipu-ai",
+    "context-window",
+    "token-usage",
+    "chinese"
+  ]
+}

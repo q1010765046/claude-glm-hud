@@ -1,0 +1,48 @@
+{
+  "name": "claude-glm-hud",
+  "version": "1.0.0",
+  "description": "Claude Code 状态栏插件：实时显示智谱 AI Token 使用率和上下文窗口信息",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "claude-glm-hud": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsx build.ts",
+    "dev": "tsx src/index.ts",
+    "watch": "tsx watch src/index.ts",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "claude-code",
+    "plugin",
+    "statusline",
+    "hud",
+    "glm",
+    "zhipu-ai",
+    "context-window",
+    "token-usage"
+  ],
+  "author": {
+    "name": "claude-glm-hud"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/q1010765046/claude-glm-hud"
+  },
+  "homepage": "https://github.com/q1010765046/claude-glm-hud#readme",
+  "bugs": {
+    "url": "https://github.com/q1010765046/claude-glm-hud/issues"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "esbuild": "^0.19.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
