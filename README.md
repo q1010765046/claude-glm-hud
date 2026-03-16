@@ -31,6 +31,23 @@
 
 ## 安装
 
+### 一键安装（推荐）
+
+#### Windows
+```bash
+# 在 PowerShell 或 CMD 中执行
+curl -o install.bat https://raw.githubusercontent.com/q1010765046/claude-glm-hud/main/install.bat
+./install.bat
+```
+
+#### Linux/macOS
+```bash
+# 在终端中执行
+curl -o install.sh https://raw.githubusercontent.com/q1010765046/claude-glm-hud/main/install.sh
+chmod +x install.sh
+./install.sh
+```
+
 ### 手动安装
 
 1. 克隆仓库：
