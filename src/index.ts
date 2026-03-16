@@ -32,14 +32,10 @@ export async function main(): Promise<void> {
     // 5. 渲染输出
     render(context);
   } catch (error) {
-    // 静默失败，不影响状态栏显示
+    // 调试输出
     // console.error('[GLM-HUD 错误]', error);
   }
 }
 
-// 仅当直接运行时执行
-if (import.meta.url === `file://${process.argv[1]}`) {
-  main().catch(() => {
-    // 忽略错误
-  });
-}
+// 直接执行（用于调试）
+main().catch(() => {});
