@@ -1,103 +1,79 @@
 /**
- * 渲染协调器
- * 整合所有渲染模块，输出到 stdout
+ * 渲染协调器（保持老版本显示格式 + 上下文）
  */
 
 import { RenderContext } from '../types.js';
-import { getModelDisplayName } from '../stdin.js';
-import { renderContextLine, renderContextLineCompact } from './context-line.js';
-import { renderUsageLine, renderUsageLineCompact } from './usage-line.js';
-import { renderMcpLine, renderMcpLineCompact } from './mcp-line.js';
+import { formatProgressBar } from './utils.js';
+import { formatResetTime } from './utils.js';
 
 /**
- * 渲染输出（主函数）
+ * 渲染输出（老版本格式 + 上下文）
  */
 export function render(ctx: RenderContext): void {
-  const { config } = ctx;
+  const { stdin, glmUsage } = ctx;
 
-  // 根据布局模式选择渲染方式
-  if (config.lineLayout === 'expanded') {
-    renderExpanded(ctx);
-  } else {
-    renderCompact(ctx);
+  const parts: string[] = [];
+
+  // 1. Token 进度条（老版本）
+  if (glmUsage && glmUsage.tokenPercent !== null) {
+    const tokenStr = `🔋Token:${formatProgressBar(glmUsage.tokenPercent)} ${glmUsage.tokenPercent.toString().padStart(3)}%`;
+    parts.push(tokenStr);
+  }
+
+  // 2. 剩余时间进度条（老版本）
+  if (glmUsage && glmUsage.resetTime) {
+    const resetInfo = formatResetTime(glmUsage.resetTime);
+    if (resetInfo) {
+      const resetStr = `🔄剩余:${formatProgressBar(resetInfo.percent)} ${resetInfo.text}`;
+      parts.push(resetStr);
+    }
+  }
+
+  // 3. MCP 进度条（老版本）
+  if (glmUsage && glmUsage.mcpPercent !== undefined) {
+    const mcpStr = `🌐MCP:${formatProgressBar(glmUsage.mcpPercent)} ${glmUsage.mcpPercent.toString().padStart(3)}%`;
+    parts.push(mcpStr);
+  }
+
+  // 4. 上下文窗口（新增，放在最后）
+  const contextInfo = renderContextInfo(stdin);
+  if (contextInfo) {
+    parts.push(contextInfo);
+  }
+
+  // 组合内容（老版本格式：用 │ 分隔）
+  if (parts.length > 0) {
+    const content = parts.join(' │ ');
+    console.log(content);
   }
 }
 
 /**
- * Compact 模式（单行）
- * @example
- * 📊上下文:[██████░░░░] 45% (90K/200K) │ 🔋Token:[░░░░░░░░░░] 3% │ 🌐MCP:[██████░░░░] 65%
+ * 渲染上下文信息（新增功能）
  */
-function renderCompact(ctx: RenderContext): void {
-  const lines: string[] = [];
+function renderContextInfo(stdin: any): string | null {
+  const cw = stdin.context_window;
+  if (!cw) return null;
 
-  // 1. 上下文行
-  const contextLine = renderContextLineCompact(ctx);
-  if (contextLine) {
-    lines.push(contextLine);
-  }
+  const percent = cw.used_percentage ?? (
+    cw.context_window_size && cw.current_usage?.input_tokens
+      ? Math.round((cw.current_usage.input_tokens / cw.context_window_size) * 100)
+      : null
+  );
 
-  // 2. Token 使用率行
-  const usageLine = renderUsageLineCompact(ctx);
-  if (usageLine) {
-    lines.push(usageLine);
-  }
+  if (percent === null) return null;
 
-  // 3. MCP 使用率行
-  const mcpLine = renderMcpLineCompact(ctx);
-  if (mcpLine) {
-    lines.push(mcpLine);
-  }
+  const used = cw.current_usage?.input_tokens ?? 0;
+  const total = cw.context_window_size ?? 200000;
+  const usedStr = formatTokens(used);
+  const totalStr = formatTokens(total);
 
-  // 输出
-  if (lines.length > 0) {
-    const separator = ctx.config.showSeparators ? ' │ ' : ' ';
-    console.log(lines.join(separator));
-  }
+  return `📊上下文:${formatProgressBar(percent)} ${percent}% (${usedStr}/${totalStr})`;
 }
 
-/**
- * Expanded 模式（多行）
- * @example
- * 📊上下文:[██████░░░░] 45% (90K/200K)
- * 🔋Token:[░░░░░░░░░░] 3%
- * 🌐MCP:[██████░░░░] 65%
- */
-function renderExpanded(ctx: RenderContext): void {
-  const lines: string[] = [];
-
-  // 1. 上下文行
-  const contextLine = renderContextLine(ctx);
-  if (contextLine) {
-    lines.push(contextLine);
-  }
-
-  // 2. Token 使用率行
-  const usageLine = renderUsageLine(ctx);
-  if (usageLine) {
-    lines.push(usageLine);
-  }
-
-  // 3. MCP 使用率行
-  const mcpLine = renderMcpLine(ctx);
-  if (mcpLine) {
-    lines.push(mcpLine);
-  }
-
-  // 输出（每行一个）
-  for (const line of lines) {
-    console.log(line);
-  }
-}
-
-/**
- * 渲染模型信息（可选）
- */
-export function renderModelInfo(ctx: RenderContext): string | null {
-  if (!ctx.config.display.showModel) {
-    return null;
-  }
-
-  const modelName = getModelDisplayName(ctx.stdin);
-  return modelName;
+// 重新导出 formatTokens 供其他模块使用
+function formatTokens(tokens: number): string {
+  if (tokens >= 1_000_000) return `${(tokens / 1_000_000).toFixed(1)}M`;
+  if (tokens >= 1_000) return `${(tokens / 1_000).toFixed(0)}K`;
+  return `${tokens}`;
 }

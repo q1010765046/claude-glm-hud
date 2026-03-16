@@ -29,7 +29,7 @@ export interface StdinData {
 export interface GlmUsageData {
   tokenPercent: number;
   mcpPercent?: number;
-  resetTime?: string;
+  resetTime?: number; // 毫秒时间戳
   resetSeconds?: number;
   planName?: string;
   apiUnavailable?: boolean;

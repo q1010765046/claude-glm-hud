@@ -47,7 +47,7 @@ function parseApiResponse(data: GlmApiResponse): GlmUsageData | null {
       if (type === 'TOKENS_LIMIT') {
         result.tokenPercent = Math.round(percentage);
         if (resetTime) {
-          result.resetTime = new Date(resetTime).toISOString();
+          result.resetTime = resetTime; // 保持为毫秒时间戳
           result.resetSeconds = Math.max(0, Math.floor((resetTime - Date.now()) / 1000));
         }
         hasData = true;
