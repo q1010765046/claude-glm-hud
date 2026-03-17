@@ -5,14 +5,13 @@
 ```
 claude-glm-hud/
 ├── commands/                # 用户命令
-│   ├── setup.md           # 安装命令
-│   └── configure.md       # 配置命令（保留用于未来扩展）
+│   └── setup.md           # 安装命令
 ├── src/                     # 源代码
 │   ├── index.ts           # 主入口
 │   ├── types.ts           # 类型定义
 │   ├── constants.ts       # 常量
 │   ├── stdin.ts           # stdin 解析
-│   ├── config.ts          # 配置管理（AUTH_TOKEN）
+│   ├── config.ts          # 配置管理（GLM_API_KEY）
 │   ├── glm-api.ts         # GLM API
 │   ├── cache.ts           # 缓存管理
 │   └── render/            # 渲染模块
@@ -29,45 +28,15 @@ claude-glm-hud/
 
 ## 快速开始
 
-### 1. 安装依赖
+推荐在 Claude Code 中直接执行：
 
-```bash
-npm install
+```text
+@一键安装.md
 ```
 
-### 2. 构建项目
+安装文档会引导完成依赖安装、构建和 `statusLine` 配置。
 
-```bash
-npm run build
-```
-
-### 3. 本地测试
-
-```bash
-# 测试渲染功能
-echo '{"context_window":{"context_window_size":200000,"current_usage":{"input_tokens":90000},"used_percentage":45}}' | node dist/index.js
-
-# 预期输出：
-# 📊上下文:[███████████████░░░░░░░░░] 45% (90K/200K)
-```
-
-### 4. 配置状态栏
-
-编辑 `~/.claude/settings.json`：
-
-```json
-{
-  "statusLine": {
-    "type": "command",
-    "command": "node D:/myProject/claude-glm-hud/dist/index.js"
-  },
-  "env": {
-    "ANTHROPIC_AUTH_TOKEN": "你的智谱AI_Token"
-  }
-}
-```
-
-### 5. 重启 Claude Code
+如果你在维护项目本身，再使用下面的开发命令。
 
 ## 开发模式
 
@@ -85,10 +54,14 @@ npm run watch
 - **🌐MCP** - MCP 时间使用率
 - **📊上下文** - 当前会话上下文窗口使用情况
 
-## 发布流程
+## 手动测试
 
-1. 更新 `package.json` 中的版本号
-2. 运行 `npm run build`
-3. 提交到 Git
-4. 创建 Git Tag
-5. 运行 `claude marketplace publish`
+```bash
+echo '{"context_window":{"context_window_size":200000,"current_usage":{"input_tokens":90000},"used_percentage":45}}' | node dist/index.js
+```
+
+预期输出应包含类似：
+
+```text
+📊上下文:[███████████████░░░░░░░░░] 45% (90K/200K)
+```

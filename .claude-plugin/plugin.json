@@ -3,7 +3,8 @@
   "description": "实时显示智谱 AI Token 使用率和 Claude Code 上下文窗口信息",
   "version": "1.0.0",
   "author": {
-    "name": "claude-glm-hud"
+    "name": "q1010765046",
+    "url": "https://github.com/q1010765046"
   },
   "homepage": "https://github.com/q1010765046/claude-glm-hud",
   "repository": "https://github.com/q1010765046/claude-glm-hud",
@@ -16,5 +17,8 @@
     "context-window",
     "token-usage",
     "chinese"
+  ],
+  "commands": [
+    "./commands/setup.md"
   ]
 }

@@ -1,6 +1,7 @@
-# GLM-HUD
+# CLAUDE-GLM-HUD
 
 > Claude Code 状态栏插件：实时显示智谱 AI Token 使用率和上下文窗口信息
+>完全使用ClaudeCode+GLM-4.7生产的工具
 
 ![Version](https://img.shields.io/badge/version-1.0.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
@@ -21,53 +22,29 @@
 
 ## 安装
 
-### 一键安装（推荐）
+### 快速安装
 
-#### Windows
+1. **下载项目**：从 GitHub Releases 下载 zip 文件并解压
+2. **运行安装脚本**：
+
+**Windows:**
 ```bash
-# 在 PowerShell 或 CMD 中执行
-curl -o install.bat https://raw.githubusercontent.com/q1010765046/claude-glm-hud/main/install.bat
-./install.bat
+install.bat
 ```
 
-#### Linux/macOS
+**Linux/macOS:**
 ```bash
-# 在终端中执行
-curl -o install.sh https://raw.githubusercontent.com/q1010765046/claude-glm-hud/main/install.sh
 chmod +x install.sh
 ./install.sh
 ```
 
-### 手动安装
+### 安装说明
 
-1. 克隆仓库：
-```bash
-git clone https://github.com/q1010765046/claude-glm-hud.git ~/.claude/plugins/claude-glm-hud
-```
+- **不需要 Git**，直接下载 zip 即可
+- 安装脚本会自动完成构建、复制文件、配置状态栏
+- **安装后当前目录可删除**，插件已复制到 `~/.claude/plugins/claude-glm-hud/`
 
-2. 安装依赖：
-```bash
-cd ~/.claude/plugins/claude-glm-hud
-npm install
-```
-
-3. 构建插件：
-```bash
-npm run build
-```
-
-4. 配置状态栏：
-编辑 `~/.claude/settings.json`，添加：
-```json
-{
-  "statusLine": {
-    "type": "command",
-    "command": "node ~/.claude/plugins/claude-glm-hud/dist/index.js"
-  }
-}
-```
-
-5. 重启 Claude Code
+详见 [一键安装.md](./一键安装.md)
 
 ## 前置条件
 
@@ -123,7 +100,7 @@ src/
 
 ### 状态栏不显示
 
-检查 `~/.claude/settings.json` 中的 statusLine 配置是否正确。
+优先重新执行 `@一键安装.md`，确认 `~/.claude/settings.json` 中的 `statusLine` 配置已正确写入。
 
 ### 上下文数据不更新
 
@@ -131,7 +108,7 @@ src/
 
 ### GLM API 调用失败
 
-检查 `~/.claude/settings.json` 中的 ANTHROPIC_AUTH_TOKEN 配置是否正确。
+检查 `~/.claude/settings.json` 中的 `GLM_API_KEY` 配置是否正确。
 
 ## 许可证
 

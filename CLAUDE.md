@@ -17,11 +17,7 @@ src/
 ├── cache.ts          # 缓存管理
 └── render/           # 渲染模块
     ├── index.ts      # 渲染协调器
-    ├── colors.ts     # 颜色工具
-    ├── utils.ts      # 工具函数
-    ├── context-line.ts    # 上下文行
-    ├── usage-line.ts      # Token 使用率行
-    └── mcp-line.ts        # MCP 使用率行
+    └── utils.ts      # 工具函数
 ```
 
 ## 数据流
@@ -89,13 +85,15 @@ export const GLM_USAGE_ENDPOINT = '/api/monitor/usage/quota/limit';
 DEBUG=1 npm run dev
 ```
 
-## 发布流程
+## 安装方式
 
-1. 更新版本号（package.json）
-2. 运行 `npm run build`
-3. 提交到 Git
-4. 创建 Git Tag
-5. 运行 `claude marketplace publish`
+面向用户时，优先引导其在 Claude Code 中执行：
+
+```text
+@一键安装.md
+```
+
+该文档负责安装依赖、构建插件并配置 `statusLine`。
 
 ## 常见问题
 
@@ -109,4 +107,4 @@ DEBUG=1 npm run dev
 
 ### GLM API 调用失败
 
-检查 `~/.claude/settings.json` 中的 ANTHROPIC_AUTH_TOKEN 配置
+检查 `~/.claude/settings.json` 中的 `ANTHROPIC_AUTH_TOKEN` 配置

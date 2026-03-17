@@ -29,7 +29,7 @@ allowed-tools: Read, Edit, AskUserQuestion, Bash
 {
   "statusLine": {
     "type": "command",
-    "command": "node ~/.claude/plugins/claude-glm-hud/dist/index.js"
+    "command": "node /完整路径/claude-glm-hud/dist/index.js"
   }
 }
 ```
