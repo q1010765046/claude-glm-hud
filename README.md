@@ -16,9 +16,7 @@
 
 ## 显示效果
 
-```
-![alt text](image.png)
-```
+![GLM-HUD 显示效果](image.png)
 
 ## 安装
 
@@ -110,7 +108,7 @@ src/
 
 ### GLM API 调用失败
 
-检查 `~/.claude/settings.json` 中的 `GLM_API_KEY` 配置是否正确。
+检查 `~/.claude/settings.json` 中的 `ANTHROPIC_AUTH_TOKEN` 配置是否正确。
 
 ## 许可证
 
