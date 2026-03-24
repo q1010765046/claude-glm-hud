@@ -5,7 +5,7 @@
 
 import { getAuthToken } from './config.js';
 import { readCache, writeCache } from './cache.js';
-import { GlmUsageData } from './types.js';
+import { UsageData } from './types.js';
 import { GLM_API_BASE, GLM_USAGE_ENDPOINT } from './constants.js';
 
 /**
@@ -25,13 +25,14 @@ interface GlmApiResponse {
 /**
  * 解析 API 响应
  */
-function parseApiResponse(data: GlmApiResponse): GlmUsageData | null {
+function parseApiResponse(data: GlmApiResponse): UsageData | null {
   try {
-    const result: GlmUsageData = {
+    const result: UsageData = {
       tokenPercent: 0,
       mcpPercent: undefined,
       resetTime: undefined,
       apiUnavailable: false,
+      provider: 'glm',
     };
 
     const limits = data?.data?.limits ?? [];
@@ -66,7 +67,7 @@ function parseApiResponse(data: GlmApiResponse): GlmUsageData | null {
 /**
  * 调用 GLM API
  */
-async function fetchGlmApi(authToken: string): Promise<GlmUsageData | null> {
+async function fetchGlmApi(authToken: string): Promise<UsageData | null> {
   const url = `${GLM_API_BASE}${GLM_USAGE_ENDPOINT}`;
 
   try {
@@ -93,9 +94,9 @@ async function fetchGlmApi(authToken: string): Promise<GlmUsageData | null> {
 /**
  * 获取 GLM 使用率数据（带缓存）
  */
-export async function getGlmUsage(): Promise<GlmUsageData | undefined> {
+export async function getGlmUsage(): Promise<UsageData | undefined> {
   // 先尝试读取缓存
-  const cached = readCache();
+  const cached = readCache('glm');
   if (cached) {
     return cached;
   }
@@ -110,16 +111,17 @@ export async function getGlmUsage(): Promise<GlmUsageData | undefined> {
   const data = await fetchGlmApi(authToken);
 
   if (data) {
-    // 写入缓存
-    writeCache(data);
+    // 写入缓存，指定 provider
+    writeCache(data, 'glm');
     return data;
   }
 
   // API 调用失败，返回失败标记
-  const failureData: GlmUsageData = {
+  const failureData: UsageData = {
     tokenPercent: 0,
     apiUnavailable: true,
+    provider: 'glm',
   };
-  writeCache(failureData);
+  writeCache(failureData, 'glm');
   return undefined;
 }
