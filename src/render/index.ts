@@ -11,35 +11,44 @@ import { readContextCache, writeContextCache } from '../cache.js';
  * 渲染输出（老版本格式 + 上下文）
  */
 export function render(ctx: RenderContext): void {
-  const { stdin, glmUsage } = ctx;
+  const { stdin, usageData } = ctx;  // 重命名 glmUsage -> usageData
 
   const parts: string[] = [];
+  const isMiniMax = usageData?.provider === 'minimax';
 
-  // 1. Token 进度条（老版本）
-  if (glmUsage && glmUsage.tokenPercent !== null) {
-    const tokenStr = `🔋Token:${formatProgressBar(glmUsage.tokenPercent)} ${glmUsage.tokenPercent.toString().padStart(3)}%`;
+  // 1. Token 进度条
+  if (usageData && usageData.tokenPercent !== null) {
+    const tokenStr = `🔋Token:${formatProgressBar(usageData.tokenPercent)} ${usageData.tokenPercent.toString().padStart(3)}%`;
     parts.push(tokenStr);
   }
 
-  // 2. 剩余时间进度条（老版本）
-  if (glmUsage && glmUsage.resetTime) {
-    const resetInfo = formatResetTime(glmUsage.resetTime);
+  // 2. 剩余时间进度条
+  if (usageData && usageData.resetTime) {
+    const resetInfo = formatResetTime(usageData.resetTime);
     if (resetInfo) {
       const resetStr = `🔄剩余:${formatProgressBar(resetInfo.percent)} ${resetInfo.text}`;
       parts.push(resetStr);
     }
   }
 
-  // 3. MCP 进度条（老版本）
-  if (glmUsage && glmUsage.mcpPercent !== undefined) {
-    const mcpStr = `🌐MCP:${formatProgressBar(glmUsage.mcpPercent)} ${glmUsage.mcpPercent.toString().padStart(3)}%`;
+  // 3. MCP/语音 进度条
+  if (usageData && usageData.mcpPercent !== undefined) {
+    const label = isMiniMax ? '语音' : 'MCP';
+    const mcpStr = `🌐${label}:${formatProgressBar(usageData.mcpPercent)} ${usageData.mcpPercent.toString().padStart(3)}%`;
     parts.push(mcpStr);
   }
 
-  // 4. 上下文窗口（新增，放在最后）
-  const contextInfo = renderContextInfo(stdin);
-  if (contextInfo) {
-    parts.push(contextInfo);
+  // 4. 上下文/图像 进度条
+  if (isMiniMax && usageData?.contextPercent !== undefined) {
+    // MiniMax 模式：显示图像使用率
+    const imageStr = `📊图像:${formatProgressBar(usageData.contextPercent)} ${usageData.contextPercent.toString().padStart(3)}%`;
+    parts.push(imageStr);
+  } else {
+    // 智谱模式：显示上下文窗口
+    const contextInfo = renderContextInfo(stdin);
+    if (contextInfo) {
+      parts.push(contextInfo);
+    }
   }
 
   // 组合内容（老版本格式：用 │ 分隔）
