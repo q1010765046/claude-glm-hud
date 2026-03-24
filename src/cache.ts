@@ -12,7 +12,7 @@ import {
   mkdirSync,
   unlinkSync,
 } from 'fs';
-import { CacheFile, GlmUsageData } from './types.js';
+import { CacheFile, UsageData } from './types.js';
 import { CACHE_DIR, CACHE_FILE, CACHE_TTL_MS, CACHE_FAILURE_TTL_MS } from './constants.js';
 
 /**
@@ -43,8 +43,9 @@ function getContextCachePath(): string {
 
 /**
  * 读取缓存
+ * @param expectedProvider 期望的数据来源，用于验证缓存是否匹配
  */
-export function readCache(): GlmUsageData | null {
+export function readCache(expectedProvider?: 'glm' | 'minimax'): UsageData | null {
   const cachePath = getCachePath();
 
   if (!existsSync(cachePath)) {
@@ -54,6 +55,11 @@ export function readCache(): GlmUsageData | null {
   try {
     const raw = readFileSync(cachePath, 'utf-8');
     const cache: CacheFile = JSON.parse(raw);
+
+    // 如果指定了 provider，验证缓存是否匹配
+    if (expectedProvider && cache.provider && cache.provider !== expectedProvider) {
+      return null;
+    }
 
     const now = Date.now();
     const age = now - cache.timestamp;
@@ -76,7 +82,7 @@ export function readCache(): GlmUsageData | null {
 /**
  * 写入缓存
  */
-export function writeCache(data: GlmUsageData): void {
+export function writeCache(data: UsageData, provider?: 'glm' | 'minimax'): void {
   const cachePath = getCachePath();
   const cacheDir = join(homedir(), CACHE_DIR);
 
@@ -87,6 +93,7 @@ export function writeCache(data: GlmUsageData): void {
     }
 
     const cache: CacheFile = {
+      provider: provider ?? data.provider,
       data,
       timestamp: Date.now(),
     };
