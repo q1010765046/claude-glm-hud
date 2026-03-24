@@ -26,3 +26,29 @@ export function getAuthToken(): string | null {
     return null;
   }
 }
+
+/**
+ * 从 settings.json 获取 ANTHROPIC_MODEL
+ */
+export function getAnthropicModel(): string | null {
+  if (!existsSync(SETTINGS_FILE)) {
+    return null;
+  }
+
+  try {
+    const raw = readFileSync(SETTINGS_FILE, 'utf-8');
+    const settings = JSON.parse(raw);
+    return settings.env?.ANTHROPIC_MODEL ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * 判断当前是否为 MiniMax 模型
+ */
+export function isMiniMaxModel(): boolean {
+  const model = getAnthropicModel();
+  if (!model) return false;
+  return model.toLowerCase().includes('minimax');
+}
