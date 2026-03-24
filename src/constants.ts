@@ -22,3 +22,7 @@ export const BAR_WIDTH = 20; // 老版本：20
 
 // 5小时周期（秒）
 export const CYCLE_SECONDS = 18000;
+
+// MiniMax API 配置
+export const MINIMAX_API_BASE = 'https://www.minimaxi.com';
+export const MINIMAX_USAGE_ENDPOINT = '/v1/api/openplatform/coding_plan/remains';
