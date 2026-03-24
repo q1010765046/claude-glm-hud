@@ -24,22 +24,27 @@ export interface StdinData {
 }
 
 /**
- * GLM API 使用率数据
+ * 统一使用率数据（支持智谱和 MiniMax）
  */
-export interface GlmUsageData {
+export interface UsageData {
   tokenPercent: number;
   mcpPercent?: number;
+  contextPercent?: number;  // MiniMax: 图像使用率
   resetTime?: number; // 毫秒时间戳
   resetSeconds?: number;
-  planName?: string;
   apiUnavailable?: boolean;
+  provider?: 'glm' | 'minimax';  // 数据来源，用于渲染层判断标签
 }
+
+// 保持向后兼容的类型别名
+export type GlmUsageData = UsageData;
 
 /**
  * 缓存文件结构
  */
 export interface CacheFile {
-  data: GlmUsageData;
+  provider?: 'glm' | 'minimax';  // 新增：区分数据来源
+  data: UsageData;
   timestamp: number;
 }
 
@@ -48,5 +53,5 @@ export interface CacheFile {
  */
 export interface RenderContext {
   stdin: StdinData;
-  glmUsage?: GlmUsageData;
+  usageData?: UsageData;  // 重命名
 }
