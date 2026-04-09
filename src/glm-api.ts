@@ -47,7 +47,7 @@ function parseApiResponse(data: GlmApiResponse): UsageData | null {
       const percentage = limit.percentage;
       const resetTime = limit.nextResetTime;
 
-      if (type === 'TIME_LIMIT' && unit === 5) {
+      if (type === 'TOKENS_LIMIT' && unit === 3) {
         // 5小时滚动周期：token 使用百分比和刷新时间
         if (percentage !== undefined) {
           result.tokenPercent = Math.round(percentage);
@@ -57,7 +57,7 @@ function parseApiResponse(data: GlmApiResponse): UsageData | null {
           result.resetSeconds = Math.max(0, Math.floor((resetTime - Date.now()) / 1000));
         }
         hasData = true;
-      } else if (type === 'TOKENS_LIMIT' && unit === 3) {
+      } else if (type === 'TOKENS_LIMIT' && unit === 6) {
         // 周限额：token 使用百分比和刷新时间
         if (percentage !== undefined) {
           result.weeklyTokenPercent = Math.round(percentage);
@@ -67,7 +67,7 @@ function parseApiResponse(data: GlmApiResponse): UsageData | null {
         }
         hasData = true;
       } else if (type === 'TIME_LIMIT') {
-        // 其他时间限制（MCP等）
+        // MCP 等时间限制
         if (percentage !== undefined) {
           result.mcpPercent = Math.round(percentage);
         }
@@ -84,7 +84,7 @@ function parseApiResponse(data: GlmApiResponse): UsageData | null {
 /**
  * 调用 GLM API
  */
-async function fetchGlmApi(authToken: string): Promise<UsageData | null> {
+export async function fetchGlmApi(authToken: string): Promise<UsageData | null> {
   const url = `${GLM_API_BASE}${GLM_USAGE_ENDPOINT}`;
 
   try {

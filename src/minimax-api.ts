@@ -99,7 +99,7 @@ function parseApiResponse(data: MiniMaxApiResponse): UsageData | null {
 /**
  * 调用 MiniMax API
  */
-async function fetchMiniMaxApi(authToken: string): Promise<UsageData | null> {
+export async function fetchMiniMaxApi(authToken: string): Promise<UsageData | null> {
   const url = `${MINIMAX_API_BASE}${MINIMAX_USAGE_ENDPOINT}`;
 
   try {

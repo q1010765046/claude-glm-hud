@@ -43,3 +43,5 @@ Thumbs.db
 .claude/token_cache.json
 .claude/debug/
 .claude/settings.local.json
+.claude/scheduled_tasks.lock
+.claude/scheduled_tasks.json

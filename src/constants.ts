@@ -23,6 +23,12 @@ export const BAR_WIDTH = 20; // 老版本：20
 // 5小时周期（秒）
 export const CYCLE_SECONDS = 18000;
 
+// 守护进程配置
+export const DAEMON_PID_FILE = 'daemon.pid';
+export const HEARTBEAT_FILE = 'heartbeat';
+export const DAEMON_INTERVAL_MS = 60_000;    // 守护进程获取间隔: 60秒
+export const HEARTBEAT_TIMEOUT_MS = 300_000;  // 心跳超时: 5分钟
+
 // MiniMax API 配置
 export const MINIMAX_API_BASE = 'https://www.minimaxi.com';
 export const MINIMAX_USAGE_ENDPOINT = '/v1/api/openplatform/coding_plan/remains';
