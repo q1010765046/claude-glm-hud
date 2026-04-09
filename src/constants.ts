@@ -9,7 +9,7 @@ export const GLM_USAGE_ENDPOINT = '/api/monitor/usage/quota/limit';
 // 缓存配置
 export const CACHE_DIR = '.claude/plugins/claude-glm-hud';
 export const CACHE_FILE = 'glm-usage-cache.json';
-export const CACHE_TTL_MS = 60_000; // 成功: 60秒
+export const CACHE_TTL_MS = 30_000; // 成功: 30秒
 export const CACHE_FAILURE_TTL_MS = 15_000; // 失败: 15秒
 
 // 颜色配置（与老版本一致：薄荷绿）
@@ -26,7 +26,7 @@ export const CYCLE_SECONDS = 18000;
 // 守护进程配置
 export const DAEMON_PID_FILE = 'daemon.pid';
 export const HEARTBEAT_FILE = 'heartbeat';
-export const DAEMON_INTERVAL_MS = 60_000;    // 守护进程获取间隔: 60秒
+export const DAEMON_INTERVAL_MS = 30_000;    // 守护进程获取间隔: 30秒
 export const HEARTBEAT_TIMEOUT_MS = 300_000;  // 心跳超时: 5分钟
 
 // MiniMax API 配置
