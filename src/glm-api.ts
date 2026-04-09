@@ -16,6 +16,8 @@ interface GlmApiResponse {
   data?: {
     limits?: Array<{
       type: string;
+      unit?: number;
+      number?: number;
       percentage?: number;
       nextResetTime?: number;
     }>;
@@ -31,6 +33,7 @@ function parseApiResponse(data: GlmApiResponse): UsageData | null {
       tokenPercent: 0,
       mcpPercent: undefined,
       resetTime: undefined,
+      weeklyResetTime: undefined,
       apiUnavailable: false,
       provider: 'glm',
     };
@@ -40,20 +43,34 @@ function parseApiResponse(data: GlmApiResponse): UsageData | null {
 
     for (const limit of limits) {
       const type = limit.type;
+      const unit = limit.unit;
       const percentage = limit.percentage;
       const resetTime = limit.nextResetTime;
 
-      if (percentage === undefined) continue;
-
-      if (type === 'TOKENS_LIMIT') {
-        result.tokenPercent = Math.round(percentage);
+      if (type === 'TIME_LIMIT' && unit === 5) {
+        // 5小时滚动周期：token 使用百分比和刷新时间
+        if (percentage !== undefined) {
+          result.tokenPercent = Math.round(percentage);
+        }
         if (resetTime) {
-          result.resetTime = resetTime; // 保持为毫秒时间戳
+          result.resetTime = resetTime;
           result.resetSeconds = Math.max(0, Math.floor((resetTime - Date.now()) / 1000));
         }
         hasData = true;
+      } else if (type === 'TOKENS_LIMIT' && unit === 3) {
+        // 周限额：token 使用百分比和刷新时间
+        if (percentage !== undefined) {
+          result.weeklyTokenPercent = Math.round(percentage);
+        }
+        if (resetTime) {
+          result.weeklyResetTime = resetTime;
+        }
+        hasData = true;
       } else if (type === 'TIME_LIMIT') {
-        result.mcpPercent = Math.round(percentage);
+        // 其他时间限制（MCP等）
+        if (percentage !== undefined) {
+          result.mcpPercent = Math.round(percentage);
+        }
         hasData = true;
       }
     }

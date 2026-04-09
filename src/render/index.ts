@@ -3,8 +3,7 @@
  */
 
 import { RenderContext } from '../types.js';
-import { formatProgressBar } from './utils.js';
-import { formatResetTime } from './utils.js';
+import { formatProgressBar, formatResetTime, formatDuration } from './utils.js';
 import { readContextCache, writeContextCache } from '../cache.js';
 
 /**
@@ -16,17 +15,26 @@ export function render(ctx: RenderContext): void {
   const parts: string[] = [];
   const isMiniMax = usageData?.provider === 'minimax';
 
-  // 1. Token 进度条
+  // 1. Token 进度条（主显示5小时，括号内显示周限额）
   if (usageData && usageData.tokenPercent !== null) {
-    const tokenStr = `🔋Token:${formatProgressBar(usageData.tokenPercent)} ${usageData.tokenPercent.toString().padStart(3)}%`;
+    let tokenStr = `🔋Token:${formatProgressBar(usageData.tokenPercent)} ${usageData.tokenPercent.toString().padStart(3)}%`;
+    if (usageData.weeklyTokenPercent !== undefined) {
+      tokenStr += ` (周${usageData.weeklyTokenPercent.toString().padStart(3)}%)`;
+    }
     parts.push(tokenStr);
   }
 
-  // 2. 剩余时间进度条
+  // 2. 剩余时间进度条（主显示5小时，括号内显示周限额刷新时间）
   if (usageData && usageData.resetTime) {
     const resetInfo = formatResetTime(usageData.resetTime);
     if (resetInfo) {
-      const resetStr = `🔄剩余:${formatProgressBar(resetInfo.percent)} ${resetInfo.text}`;
+      let resetStr = `🔄剩余:${formatProgressBar(resetInfo.percent)} ${resetInfo.text}`;
+      if (usageData.weeklyResetTime) {
+        const weeklyDelta = Math.max(0, Math.floor((usageData.weeklyResetTime - Date.now()) / 1000));
+        if (weeklyDelta > 0) {
+          resetStr += ` (${formatDuration(weeklyDelta)})`;
+        }
+      }
       parts.push(resetStr);
     }
   }

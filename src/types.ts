@@ -27,10 +27,12 @@ export interface StdinData {
  * 统一使用率数据（支持智谱和 MiniMax）
  */
 export interface UsageData {
-  tokenPercent: number;
+  tokenPercent: number;          // 5小时 token 使用百分比
+  weeklyTokenPercent?: number;   // 周 token 使用百分比
   mcpPercent?: number;
   contextPercent?: number;  // MiniMax: 图像使用率
-  resetTime?: number; // 毫秒时间戳
+  resetTime?: number; // 5小时刷新时间（毫秒时间戳）
+  weeklyResetTime?: number; // 周限额刷新时间（毫秒时间戳）
   resetSeconds?: number;
   apiUnavailable?: boolean;
   provider?: 'glm' | 'minimax';  // 数据来源，用于渲染层判断标签

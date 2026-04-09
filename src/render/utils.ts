@@ -14,7 +14,7 @@ export function formatProgressBar(percent: number): string {
 }
 
 /**
- * 格式化重置时间（与老版本一致）
+ * 格式化重置时间
  */
 export function formatResetTime(resetTimestampMs: number): { text: string; percent: number } | null {
   if (!resetTimestampMs) return null;
@@ -32,20 +32,27 @@ export function formatResetTime(resetTimestampMs: number): { text: string; perce
     // 5小时为刷新周期，用剩余时间计算进度
     const usedPercent = Math.min(100, Math.max(0, Math.floor((CYCLE_SECONDS - totalSeconds) * 100 / CYCLE_SECONDS)));
 
-    const days = Math.floor(totalSeconds / 86400);
-    const hours = Math.floor((totalSeconds % 86400) / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-
-    const parts: string[] = [];
-    if (days > 0) parts.push(`${days}天`);
-    if (hours > 0) parts.push(`${hours}小时`);
-    if (minutes > 0 || (days === 0 && hours === 0)) parts.push(`${minutes}分`);
-
-    const timeText = parts.length > 0 ? parts.join('') : '0分';
+    const timeText = formatDuration(totalSeconds);
     return { text: timeText, percent: usedPercent };
   } catch {
     return null;
   }
+}
+
+/**
+ * 格式化时间间隔（英文缩写：d/h/m）
+ */
+export function formatDuration(totalSeconds: number): string {
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+
+  const parts: string[] = [];
+  if (days > 0) parts.push(`${days}d`);
+  if (hours > 0) parts.push(`${hours}h`);
+  if (minutes > 0 || (days === 0 && hours === 0)) parts.push(`${minutes}m`);
+
+  return parts.length > 0 ? parts.join('') : '0m';
 }
 
 /**
