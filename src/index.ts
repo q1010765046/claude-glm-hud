@@ -3,19 +3,20 @@
  * 实时显示智谱 AI / MiniMax Token 使用率和上下文窗口信息
  *
  * 双模式运行：
- * - statusLine 模式（默认）：读缓存 + 渲染输出
+ * - statusLine 模式（默认）：读缓存 + 渲染输出（绝不阻塞等待 API）
  * - daemon 模式（--daemon）：后台定时获取 API 数据写入缓存
  */
 
 import { readStdin } from './stdin.js';
-import { readCache } from './cache.js';
 import { render } from './render/index.js';
 import { isMiniMaxModel } from './config.js';
 import { ensureDaemonRunning, updateHeartbeat } from './daemon-manager.js';
 import { runDaemon } from './daemon.js';
+import { readCache } from './cache.js';
 
 /**
- * statusLine 模式：读缓存 + 渲染
+ * statusLine 模式：读缓存 + 渲染（不阻塞等待 API）
+ * 所有 API 获取由 daemon 后台进程负责，statusLine 仅读取缓存
  */
 async function statusLineMode(): Promise<void> {
   try {
@@ -28,12 +29,12 @@ async function statusLineMode(): Promise<void> {
     // 3. 读取 stdin 数据
     const stdin = await readStdin();
 
-    // 4. 从缓存读取使用率数据（不调 API）
+    // 4. 从缓存读取使用率数据（纯读取，不触发 API 调用）
     const provider = isMiniMaxModel() ? 'minimax' : 'glm';
-    const usageData = readCache(provider) ?? undefined;
+    const usageData = readCache(provider);
 
     // 5. 渲染输出
-    render({ stdin, usageData });
+    render({ stdin, usageData: usageData ?? undefined });
   } catch {
     // 静默处理错误
   }

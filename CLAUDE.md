@@ -2,67 +2,93 @@
 
 ## 项目概述
 
-GLM-HUD 是一个 Claude Code 状态栏插件，实时显示智谱 AI Token 使用率和上下文窗口信息。
+GLM-HUD 是一个 Claude Code 状态栏插件，实时显示智谱 AI / MiniMax Token 使用率和上下文窗口信息。
 
 ## 架构
 
 ```
 src/
-├── index.ts          # 主入口
-├── types.ts          # 类型定义
-├── constants.ts      # 常量
-├── stdin.ts          # stdin JSON 解析
-├── config.ts         # 配置管理
-├── glm-api.ts        # GLM API 集成
-├── cache.ts          # 缓存管理
-└── render/           # 渲染模块
-    ├── index.ts      # 渲染协调器
-    └── utils.ts      # 工具函数
+├── index.ts           # 主入口（双模式：statusLine / daemon）
+├── types.ts           # 类型定义（StdinData, UsageData, CacheFile 等）
+├── constants.ts       # 常量（API 端点、缓存 TTL、颜色、守护进程配置）
+├── stdin.ts           # stdin JSON 解析（带 3 秒超时保护）
+├── config.ts          # 配置管理（读取 settings.json，进程内缓存）
+├── http-agent.ts      # HTTP 连接复用（keepAlive）+ 公共重试逻辑
+├── glm-api.ts         # 智谱 AI API 集成
+├── minimax-api.ts     # MiniMax API 集成
+├── cache.ts           # 跨进程文件缓存（TTL + 宽限期 + provider 校验）
+├── daemon-manager.ts  # 守护进程生命周期管理（启动/心跳/PID 文件）
+├── daemon.ts          # 守护进程工作循环（定时获取 API 数据）
+└── render/            # 渲染模块
+    ├── index.ts       # 渲染协调器
+    └── utils.ts       # 工具函数（进度条、时间格式化、Token 格式化）
 ```
 
 ## 数据流
 
 ```
-Claude Code (每 300ms)
+Claude Code (每 ~300ms)
     ↓ stdin JSON
 ├── model.display_name
-├── context_window (新增功能)
+├── context_window
 │   ├── context_window_size
 │   ├── current_usage.input_tokens
 │   └── used_percentage
 └── cwd
     ↓
-src/index.ts (主入口)
+src/index.ts (statusLine 模式)
     ↓
-src/glm-api.ts (获取 GLM 使用率)
-    ↓
-src/render/ (渲染)
+1. ensureDaemonRunning() → 确保后台守护进程运行
+2. updateHeartbeat()     → 更新心跳时间戳
+3. readStdin()           → 读取 stdin 数据
+4. readCache()           → 从文件缓存读取使用率数据
+5. render()              → 渲染输出到 stdout
     ↓
 stdout (状态栏显示)
+
+守护进程 (后台 detached 进程)
+    ↓
+1. 每 60 秒调用 API 获取使用率数据
+2. 写入文件缓存供 statusLine 读取
+3. 心跳超时 5 分钟后自动退出
 ```
 
 ## 核心功能
 
-### 上下文窗口显示
+### 双模式架构
 
-- 从 stdin JSON 直接获取上下文数据
-- 支持进度条可视化
-- 自动格式化 Token 数量（K/M）
-- 颜色阈值：绿色 <70%，黄色 70-85%，红色 >85%
+- **statusLine 模式**：仅读取缓存 + 渲染，绝不阻塞等待 API 调用
+- **daemon 模式**：后台定时获取 API 数据写入共享文件缓存
+- 两种模式通过文件系统（缓存文件、PID 文件、心跳文件）协作
 
-### GLM API 集成
+### 跨进程缓存
 
-- 调用智谱 AI API 获取 Token 使用配额
-- 智能缓存（成功 60s，失败 15s）
-- 异步获取，不阻塞渲染
+- 文件缓存路径：`~/.claude/plugins/claude-glm-hud/glm-usage-cache.json`
+- 成功数据 TTL：60 秒，失败数据 TTL：15 秒
+- 3 分钟宽限期：超过 TTL 但在宽限期内仍返回有效数据
+- provider 校验：切换智谱/MiniMax 时自动失效旧缓存
+- 上下文缓存：10 秒 TTL，应对思考阶段数据清零
 
-### 配置系统
+### 多供应商支持
 
-- JSON 配置文件
-- 支持 compact/expanded 布局
-- 可配置各个显示选项
+- 智谱 AI（GLM）：5 小时/周限额、MCP 使用率
+- MiniMax：Token 使用率、语音、图像使用率
+- 通过 `settings.json` 中的 `ANTHROPIC_MODEL` 自动识别
+
+### HTTP 连接管理
+
+- keepAlive Agent 复用 TLS 连接，减少握手开销
+- 指数退避重试（1s → 2s → 4s），应对网络不稳定
+- 统一 `withRetry()` 封装，避免重试逻辑重复
 
 ## 开发指南
+
+### 调试
+
+设置环境变量启用调试日志（覆盖 API、缓存、守护进程等关键路径）：
+```bash
+DEBUG=1 npm run dev
+```
 
 ### 添加新的渲染行
 
@@ -78,19 +104,12 @@ export const GLM_API_BASE = 'https://api.z.ai';
 export const GLM_USAGE_ENDPOINT = '/api/monitor/usage/quota/limit';
 ```
 
-### 调试
-
-设置环境变量启用调试：
-```bash
-DEBUG=1 npm run dev
-```
-
 ## 安装方式
 
 面向用户时，优先引导其在 Claude Code 中执行：
 
 ```text
-@一键安装.md
+@自动安装.md
 ```
 
 该文档负责安装依赖、构建插件并配置 `statusLine`。

@@ -1,6 +1,6 @@
 /**
  * 守护进程工作循环
- * 独立后台进程：每 30 秒获取 API 数据写入缓存
+ * 独立后台进程：每 60 秒获取 API 数据写入缓存
  * 通过心跳机制自动退出：statusLine 不再更新心跳时，守护进程在 5 分钟后退出
  */
 
@@ -11,8 +11,15 @@ import { fetchGlmApi } from './glm-api.js';
 import { fetchMiniMaxApi } from './minimax-api.js';
 import { getAuthToken } from './config.js';
 import { isMiniMaxModel } from './config.js';
-import { writeCache } from './cache.js';
+import { writeCache, readCache } from './cache.js';
 import { UsageData } from './types.js';
+// http-agent.ts 模块被 glm-api / minimax-api 导入时自动初始化 keepAlive Agent
+
+const DEBUG = process.env.DEBUG === '1';
+
+function debugLog(msg: string, data?: unknown): void {
+  if (DEBUG) console.error(`[GLM-HUD::daemon] ${msg}`, data ?? '');
+}
 
 /**
  * 读取心跳时间戳
@@ -52,13 +59,18 @@ function isStillOwner(): boolean {
 
 /**
  * 执行一次 API 获取并写入缓存
+ * 失败时不覆盖已有有效数据，避免因短暂网络抖动导致显示中断
  */
 async function fetchAndCache(): Promise<void> {
   const authToken = getAuthToken();
-  if (!authToken) return;
+  if (!authToken) {
+    debugLog('无 AUTH_TOKEN，跳过获取');
+    return;
+  }
 
   const isMiniMax = isMiniMaxModel();
   const provider = isMiniMax ? 'minimax' : 'glm';
+  debugLog(`开始获取 ${provider} 数据`);
 
   try {
     const data = isMiniMax
@@ -67,17 +79,24 @@ async function fetchAndCache(): Promise<void> {
 
     if (data) {
       writeCache(data, provider);
+      debugLog('获取成功，已写入缓存');
     } else {
-      // API 返回空，写入失败标记
-      const failureData: UsageData = {
-        tokenPercent: 0,
-        apiUnavailable: true,
-        provider,
-      };
-      writeCache(failureData, provider);
+      // API 返回空，只有在缓存中无有效数据时才写入失败标记
+      const existing = readCache(provider);
+      if (!existing) {
+        const failureData: UsageData = {
+          tokenPercent: 0,
+          apiUnavailable: true,
+          provider,
+        };
+        writeCache(failureData, provider);
+        debugLog('获取失败，无已有缓存，写入失败标记');
+      } else {
+        debugLog('获取失败，保留已有缓存数据');
+      }
     }
   } catch {
-    // 静默失败
+    debugLog('获取异常，不覆盖已有缓存');
   }
 }
 

@@ -38,14 +38,12 @@ export interface UsageData {
   provider?: 'glm' | 'minimax';  // 数据来源，用于渲染层判断标签
 }
 
-// 保持向后兼容的类型别名
-export type GlmUsageData = UsageData;
-
 /**
  * 缓存文件结构
  */
 export interface CacheFile {
   provider?: 'glm' | 'minimax';  // 新增：区分数据来源
+  tokenFingerprint?: string;     // Token 指纹，切换账号时缓存自动失效
   data: UsageData;
   timestamp: number;
 }
@@ -56,4 +54,16 @@ export interface CacheFile {
 export interface RenderContext {
   stdin: StdinData;
   usageData?: UsageData;  // 重命名
+}
+
+/**
+ * 上下文缓存数据结构
+ */
+export interface ContextCacheData {
+  inputTokens: number;
+  cacheCreationTokens: number;
+  cacheReadTokens: number;
+  totalUsed: number;
+  contextWindowSize: number;
+  timestamp: number;
 }

@@ -2,8 +2,8 @@
  * 渲染协调器（保持老版本显示格式 + 上下文）
  */
 
-import { RenderContext } from '../types.js';
-import { formatProgressBar, formatResetTime, formatDuration } from './utils.js';
+import { RenderContext, StdinData, ContextCacheData } from '../types.js';
+import { formatProgressBar, formatResetTime, formatDuration, formatTokens } from './utils.js';
 import { readContextCache, writeContextCache } from '../cache.js';
 
 /**
@@ -69,7 +69,7 @@ export function render(ctx: RenderContext): void {
 /**
  * 渲染上下文信息（新增功能）
  */
-function renderContextInfo(stdin: any): string | null {
+function renderContextInfo(stdin: StdinData): string | null {
   const cw = stdin.context_window;
   if (!cw) return null;
 
@@ -137,11 +137,4 @@ function renderContextInfo(stdin: any): string | null {
   const totalStr = formatTokens(total);
 
   return `📊上下文:${formatProgressBar(displayPercent)} ${displayPercent}% (${usedStr}/${totalStr})`;
-}
-
-// 重新导出 formatTokens 供其他模块使用
-function formatTokens(tokens: number): string {
-  if (tokens >= 1_000_000) return `${(tokens / 1_000_000).toFixed(1)}M`;
-  if (tokens >= 1_000) return `${(tokens / 1_000).toFixed(0)}K`;
-  return `${tokens}`;
 }

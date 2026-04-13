@@ -1,6 +1,6 @@
 {
   "name": "claude-glm-hud",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Claude Code 状态栏插件：实时显示智谱 AI Token 使用率和上下文窗口信息",
   "type": "module",
   "main": "dist/index.js",

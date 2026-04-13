@@ -7,6 +7,13 @@ import { getAuthToken } from './config.js';
 import { readCache, writeCache } from './cache.js';
 import { UsageData } from './types.js';
 import { GLM_API_BASE, GLM_USAGE_ENDPOINT } from './constants.js';
+import { httpsGet, withRetry } from './http-agent.js';
+
+const DEBUG = process.env.DEBUG === '1';
+
+function debugLog(msg: string, data?: unknown): void {
+  if (DEBUG) console.error(`[GLM-HUD::glm-api] ${msg}`, data ?? '');
+}
 
 /**
  * GLM API 响应类型
@@ -75,37 +82,36 @@ function parseApiResponse(data: GlmApiResponse): UsageData | null {
       }
     }
 
+    debugLog('API 解析结果', hasData ? result : '无有效数据');
     return hasData ? result : null;
   } catch {
+    debugLog('API 响应解析失败');
     return null;
   }
 }
 
 /**
- * 调用 GLM API
+ * 单次 API 请求（不含重试，使用 keepAlive 连接复用）
+ */
+async function singleFetch(url: string, authToken: string): Promise<UsageData | null> {
+  const body = await httpsGet(url, {
+    'Authorization': authToken,
+    'Content-Type': 'application/json',
+  });
+
+  const data = JSON.parse(body) as GlmApiResponse;
+  return parseApiResponse(data);
+}
+
+/**
+ * 调用 GLM API（带指数退避重试，应对 TLS 连接不稳定）
  */
 export async function fetchGlmApi(authToken: string): Promise<UsageData | null> {
   const url = `${GLM_API_BASE}${GLM_USAGE_ENDPOINT}`;
-
-  try {
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Authorization': authToken,
-        'Content-Type': 'application/json',
-      },
-      signal: AbortSignal.timeout(5000), // 5秒超时
-    });
-
-    if (!response.ok) {
-      return null;
-    }
-
-    const data = (await response.json()) as GlmApiResponse;
-    return parseApiResponse(data);
-  } catch {
-    return null;
-  }
+  debugLog('开始请求', url);
+  const result = await withRetry(() => singleFetch(url, authToken));
+  debugLog('请求结果', result ? '成功' : '失败');
+  return result;
 }
 
 /**
@@ -115,12 +121,14 @@ export async function getGlmUsage(): Promise<UsageData | undefined> {
   // 先尝试读取缓存
   const cached = readCache('glm');
   if (cached) {
+    debugLog('缓存命中');
     return cached;
   }
 
   // 获取 AUTH_TOKEN
   const authToken = getAuthToken();
   if (!authToken) {
+    debugLog('无 AUTH_TOKEN');
     return undefined;
   }
 

@@ -1,7 +1,7 @@
 {
   "name": "claude-glm-hud",
-  "description": "实时显示智谱 AI Token 使用率和 Claude Code 上下文窗口信息",
-  "version": "1.0.0",
+  "description": "实时显示智谱 AI / MiniMax Token 使用率和 Claude Code 上下文窗口信息",
+  "version": "1.1.0",
   "author": {
     "name": "q1010765046",
     "url": "https://github.com/q1010765046"

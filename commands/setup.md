@@ -9,14 +9,26 @@ allowed-tools: Read, Edit, AskUserQuestion, Bash
 
 ## 检查前置条件
 
-首先检查是否已配置智谱 AI 的 API Token：
+首先检查是否已配置 API Token：
 
 请确保您的 `~/.claude/settings.json` 中包含以下配置：
 
+**智谱 AI：**
 ```json
 {
   "env": {
-    "ANTHROPIC_AUTH_TOKEN": "您的智谱AI_API_Token"
+    "ANTHROPIC_AUTH_TOKEN": "您的智谱AI_API_Token",
+    "ANTHROPIC_MODEL": "glm-5"
+  }
+}
+```
+
+**MiniMax：**
+```json
+{
+  "env": {
+    "ANTHROPIC_AUTH_TOKEN": "您的MiniMax_API_Key",
+    "ANTHROPIC_MODEL": "MiniMax-Text-01"
   }
 }
 ```

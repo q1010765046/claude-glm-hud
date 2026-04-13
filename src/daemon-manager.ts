@@ -9,6 +9,12 @@ import { spawn } from 'child_process';
 import { existsSync, readFileSync, writeFileSync, unlinkSync } from 'fs';
 import { CACHE_DIR, DAEMON_PID_FILE, HEARTBEAT_FILE } from './constants.js';
 
+const DEBUG = process.env.DEBUG === '1';
+
+function debugLog(msg: string, data?: unknown): void {
+  if (DEBUG) console.error(`[GLM-HUD::daemon-manager] ${msg}`, data ?? '');
+}
+
 /**
  * 获取守护进程 PID 文件路径
  */
@@ -103,6 +109,7 @@ export function ensureDaemonRunning(): void {
   }
 
   // PID 文件过期或不存在，清理后启动新守护进程
+  debugLog('守护进程未运行，启动新进程');
   removePidFile();
   startDaemon();
 }

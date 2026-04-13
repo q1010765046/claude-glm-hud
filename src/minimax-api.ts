@@ -7,6 +7,13 @@ import { getAuthToken } from './config.js';
 import { readCache, writeCache } from './cache.js';
 import { UsageData } from './types.js';
 import { MINIMAX_API_BASE, MINIMAX_USAGE_ENDPOINT } from './constants.js';
+import { httpsGet, withRetry } from './http-agent.js';
+
+const DEBUG = process.env.DEBUG === '1';
+
+function debugLog(msg: string, data?: unknown): void {
+  if (DEBUG) console.error(`[GLM-HUD::minimax-api] ${msg}`, data ?? '');
+}
 
 /**
  * MiniMax API 响应类型
@@ -47,6 +54,7 @@ function calculatePercent(used: number, total: number): number {
 function parseApiResponse(data: MiniMaxApiResponse): UsageData | null {
   try {
     if (data.base_resp?.status_code !== 0) {
+      debugLog('API 返回错误', data.base_resp);
       return null;
     }
 
@@ -57,6 +65,7 @@ function parseApiResponse(data: MiniMaxApiResponse): UsageData | null {
 
     // 必须有主模型数据
     if (!tokenModel) {
+      debugLog('未找到主模型数据');
       return null;
     }
 
@@ -90,37 +99,36 @@ function parseApiResponse(data: MiniMaxApiResponse): UsageData | null {
       );
     }
 
+    debugLog('API 解析结果', result);
     return result;
   } catch {
+    debugLog('API 响应解析失败');
     return null;
   }
 }
 
 /**
- * 调用 MiniMax API
+ * 单次 MiniMax API 请求（不含重试，使用 keepAlive 连接复用）
+ */
+async function singleMiniMaxFetch(url: string, authToken: string): Promise<UsageData | null> {
+  const body = await httpsGet(url, {
+    'Authorization': `Bearer ${authToken}`,
+    'Content-Type': 'application/json',
+  });
+
+  const data = JSON.parse(body) as MiniMaxApiResponse;
+  return parseApiResponse(data);
+}
+
+/**
+ * 调用 MiniMax API（带指数退避重试，应对 TLS 连接不稳定）
  */
 export async function fetchMiniMaxApi(authToken: string): Promise<UsageData | null> {
   const url = `${MINIMAX_API_BASE}${MINIMAX_USAGE_ENDPOINT}`;
-
-  try {
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${authToken}`,
-        'Content-Type': 'application/json',
-      },
-      signal: AbortSignal.timeout(5000), // 5秒超时
-    });
-
-    if (!response.ok) {
-      return null;
-    }
-
-    const data = (await response.json()) as MiniMaxApiResponse;
-    return parseApiResponse(data);
-  } catch {
-    return null;
-  }
+  debugLog('开始请求', url);
+  const result = await withRetry(() => singleMiniMaxFetch(url, authToken));
+  debugLog('请求结果', result ? '成功' : '失败');
+  return result;
 }
 
 /**
@@ -130,12 +138,14 @@ export async function getMiniMaxUsage(): Promise<UsageData | undefined> {
   // 先尝试读取缓存
   const cached = readCache('minimax');
   if (cached) {
+    debugLog('缓存命中');
     return cached;
   }
 
   // 获取 AUTH_TOKEN
   const authToken = getAuthToken();
   if (!authToken) {
+    debugLog('无 AUTH_TOKEN');
     return undefined;
   }
 
