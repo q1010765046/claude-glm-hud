@@ -2,55 +2,65 @@
  * GLM-HUD 插件主入口
  * 实时显示智谱 AI / MiniMax Token 使用率和上下文窗口信息
  *
- * 双模式运行：
- * - statusLine 模式（默认）：读缓存 + 渲染输出（绝不阻塞等待 API）
- * - daemon 模式（--daemon）：后台定时获取 API 数据写入缓存
+ * statusLine 模式：读取缓存 + 过期时直接调 API + 渲染输出
+ * 无后台进程，通过 fetchingSince 锁机制防止雷群请求
  */
 
 import { readStdin } from './stdin.js';
 import { render } from './render/index.js';
-import { isMiniMaxModel } from './config.js';
-import { ensureDaemonRunning, updateHeartbeat } from './daemon-manager.js';
-import { runDaemon } from './daemon.js';
-import { readCache } from './cache.js';
+import { isMiniMaxModel, getAuthToken } from './config.js';
+import {
+  readRawCache,
+  readCache,
+  shouldRefresh,
+  acquireFetchLock,
+  releaseFetchLock,
+  getCachePath,
+} from './cache.js';
+import { fetchGlmApi } from './glm-api.js';
+import { fetchMiniMaxApi } from './minimax-api.js';
 
 /**
- * statusLine 模式：读缓存 + 渲染（不阻塞等待 API）
- * 所有 API 获取由 daemon 后台进程负责，statusLine 仅读取缓存
+ * statusLine 模式：缓存读取 + 按需 API 刷新 + 渲染
  */
 async function statusLineMode(): Promise<void> {
   try {
-    // 1. 确保守护进程在运行
-    ensureDaemonRunning();
-
-    // 2. 更新心跳（通知守护进程 statusLine 还在活跃）
-    updateHeartbeat();
-
-    // 3. 读取 stdin 数据
+    // 1. 读取 stdin 数据
     const stdin = await readStdin();
 
-    // 4. 从缓存读取使用率数据（纯读取，不触发 API 调用）
+    // 2. 判断供应商并读取原始缓存
     const provider = isMiniMaxModel() ? 'minimax' : 'glm';
-    const usageData = readCache(provider);
+    const { cache } = readRawCache(provider);
 
-    // 5. 渲染输出
+    // 3. 缓存过期时直接调 API 刷新
+    if (shouldRefresh(cache)) {
+      const authToken = getAuthToken();
+      if (authToken) {
+        const cachePath = getCachePath();
+        acquireFetchLock(cachePath, cache);
+        try {
+          const data = provider === 'minimax'
+            ? await fetchMiniMaxApi(authToken)
+            : await fetchGlmApi(authToken);
+          if (data) {
+            releaseFetchLock(cachePath, data, provider);
+          }
+        } catch {
+          // API 失败不覆盖旧缓存，fetch 锁在 FETCH_LOCK_TIMEOUT_MS 后自动失效
+        }
+      }
+    }
+
+    // 4. 重新读取最新缓存并渲染
+    const usageData = readCache(provider);
     render({ stdin, usageData: usageData ?? undefined });
   } catch {
     // 静默处理错误
   }
 }
 
-/**
- * 入口分发
- */
 async function main(): Promise<void> {
-  if (process.argv.includes('--daemon')) {
-    // 守护进程模式：后台定时获取 API 数据
-    await runDaemon();
-  } else {
-    // statusLine 模式：读缓存 + 渲染
-    await statusLineMode();
-  }
+  await statusLineMode();
 }
 
 main().catch(() => {});
