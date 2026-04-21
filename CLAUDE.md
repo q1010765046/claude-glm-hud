@@ -8,17 +8,15 @@ GLM-HUD 是一个 Claude Code 状态栏插件，实时显示智谱 AI / MiniMax 
 
 ```
 src/
-├── index.ts           # 主入口（双模式：statusLine / daemon）
+├── index.ts           # 主入口（statusLine 内嵌 API 刷新）
 ├── types.ts           # 类型定义（StdinData, UsageData, CacheFile 等）
-├── constants.ts       # 常量（API 端点、缓存 TTL、颜色、守护进程配置）
+├── constants.ts       # 常量（API 端点、刷新间隔、颜色）
 ├── stdin.ts           # stdin JSON 解析（带 3 秒超时保护）
 ├── config.ts          # 配置管理（读取 settings.json，进程内缓存）
 ├── http-agent.ts      # HTTP 连接复用（keepAlive）+ 公共重试逻辑
 ├── glm-api.ts         # 智谱 AI API 集成
 ├── minimax-api.ts     # MiniMax API 集成
-├── cache.ts           # 跨进程文件缓存（TTL + 宽限期 + provider 校验）
-├── daemon-manager.ts  # 守护进程生命周期管理（启动/心跳/PID 文件）
-├── daemon.ts          # 守护进程工作循环（定时获取 API 数据）
+├── cache.ts           # 文件缓存 + fetch 锁机制（防雷群）
 └── render/            # 渲染模块
     ├── index.ts       # 渲染协调器
     └── utils.ts       # 工具函数（进度条、时间格式化、Token 格式化）
@@ -38,35 +36,34 @@ Claude Code (每 ~300ms)
     ↓
 src/index.ts (statusLine 模式)
     ↓
-1. ensureDaemonRunning() → 确保后台守护进程运行
-2. updateHeartbeat()     → 更新心跳时间戳
-3. readStdin()           → 读取 stdin 数据
-4. readCache()           → 从文件缓存读取使用率数据
+1. readStdin()           → 读取 stdin 数据
+2. readRawCache()        → 读取原始缓存（含锁信息）
+3. shouldRefresh(cache)? → 判断是否超过 30 秒
+   ├── 是 → acquireFetchLock() → fetchGlmApi/fetchMiniMaxApi → releaseFetchLock()
+   └── 否 → 跳过
+4. readCache()           → 读取最新缓存
 5. render()              → 渲染输出到 stdout
     ↓
 stdout (状态栏显示)
-
-守护进程 (后台 detached 进程)
-    ↓
-1. 每 60 秒调用 API 获取使用率数据
-2. 写入文件缓存供 statusLine 读取
-3. 心跳超时 5 分钟后自动退出
+进程立即退出（无后台常驻）
 ```
 
 ## 核心功能
 
-### 双模式架构
+### 内嵌刷新架构
 
-- **statusLine 模式**：仅读取缓存 + 渲染，绝不阻塞等待 API 调用
-- **daemon 模式**：后台定时获取 API 数据写入共享文件缓存
-- 两种模式通过文件系统（缓存文件、PID 文件、心跳文件）协作
+- **无后台进程**：statusLine 每次被触发时自行判断缓存是否过期
+- **直接调 API**：缓存超过 30 秒时，statusLine 直接请求智谱/MiniMax API
+- **fetch 锁防雷群**：通过 `fetchingSince` 时间戳防止多个 statusLine 进程同时调 API
+- **锁超时保护**：fetch 锁 10 秒后自动失效，不会永久卡住
 
 ### 跨进程缓存
 
 - 文件缓存路径：`~/.claude/plugins/claude-glm-hud/glm-usage-cache.json`
-- 成功数据 TTL：60 秒，失败数据 TTL：15 秒
-- 3 分钟宽限期：超过 TTL 但在宽限期内仍返回有效数据
+- 刷新间隔：30 秒（`REFRESH_INTERVAL_MS`）
+- fetch 锁超时：10 秒（`FETCH_LOCK_TIMEOUT_MS`）
 - provider 校验：切换智谱/MiniMax 时自动失效旧缓存
+- Token 指纹校验：切换账号时缓存自动失效
 - 上下文缓存：10 秒 TTL，应对思考阶段数据清零
 
 ### 多供应商支持
@@ -85,7 +82,7 @@ stdout (状态栏显示)
 
 ### 调试
 
-设置环境变量启用调试日志（覆盖 API、缓存、守护进程等关键路径）：
+设置环境变量启用调试日志：
 ```bash
 DEBUG=1 npm run dev
 ```
