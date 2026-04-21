@@ -1,6 +1,7 @@
 /**
- * 跨进程缓存管理
- * 因为每次渲染都是新进程，需要文件缓存来避免频繁 API 调用
+ * 跨进程缓存管理 + fetch 锁机制
+ * statusLine 每次被触发时读取缓存，过期时直接调 API
+ * 使用 fetchingSince 防止多个 statusLine 进程同时调 API（雷群保护）
  */
 
 import { join } from 'path';
@@ -12,7 +13,7 @@ import {
   mkdirSync,
 } from 'fs';
 import { CacheFile, UsageData, ContextCacheData } from './types.js';
-import { CACHE_DIR, CACHE_FILE, CACHE_TTL_MS, CACHE_FAILURE_TTL_MS } from './constants.js';
+import { CACHE_DIR, CACHE_FILE, REFRESH_INTERVAL_MS, FETCH_LOCK_TIMEOUT_MS } from './constants.js';
 import { getTokenFingerprint } from './config.js';
 
 const DEBUG = process.env.DEBUG === '1';
@@ -21,89 +22,112 @@ function debugLog(msg: string, data?: unknown): void {
   if (DEBUG) console.error(`[GLM-HUD::cache] ${msg}`, data ?? '');
 }
 
-// 缓存过期宽限期：即使超过 TTL，在宽限期内仍返回上次的有效数据
-// 应对守护进程连续多次 fetch 失败时仍有数据可显示
-const CACHE_GRACE_MS = 180_000; // 3分钟宽限
-
 /**
  * 获取缓存文件路径
  */
-function getCachePath(): string {
+export function getCachePath(): string {
   return join(homedir(), CACHE_DIR, CACHE_FILE);
 }
 
 /**
- * 获取上下文缓存文件路径
+ * 读取原始缓存（包含锁信息和完整 CacheFile）
+ * 用于 shouldRefresh 判断和锁机制
  */
-function getContextCachePath(): string {
-  return join(homedir(), CACHE_DIR, 'context-cache.json');
-}
-
-/**
- * 读取缓存
- * @param expectedProvider 期望的数据来源，用于验证缓存是否匹配
- */
-export function readCache(expectedProvider?: 'glm' | 'minimax'): UsageData | null {
+export function readRawCache(expectedProvider?: 'glm' | 'minimax'): {
+  cache: CacheFile | null;
+  data: UsageData | null;
+} {
   const cachePath = getCachePath();
 
-  if (!existsSync(cachePath)) {
-    return null;
-  }
+  if (!existsSync(cachePath)) return { cache: null, data: null };
 
   try {
     const raw = readFileSync(cachePath, 'utf-8');
     const cache: CacheFile = JSON.parse(raw);
 
-    // 如果指定了 provider，验证缓存是否匹配
+    // provider 校验
     if (expectedProvider && cache.provider && cache.provider !== expectedProvider) {
       debugLog('provider 不匹配', { expected: expectedProvider, actual: cache.provider });
-      return null;
+      return { cache: null, data: null };
     }
 
-    // 验证 Token 指纹，切换账号时缓存自动失效
+    // Token 指纹校验
     const currentFingerprint = getTokenFingerprint();
     if (currentFingerprint && cache.tokenFingerprint && cache.tokenFingerprint !== currentFingerprint) {
-      debugLog('Token 指纹不匹配，缓存失效', { cached: cache.tokenFingerprint, current: currentFingerprint });
-      return null;
+      debugLog('Token 指纹不匹配，缓存失效');
+      return { cache: null, data: null };
     }
 
-    const now = Date.now();
-    const age = now - cache.timestamp;
-
-    // 根据状态使用不同 TTL
-    const ttl = cache.data.apiUnavailable
-      ? CACHE_FAILURE_TTL_MS
-      : CACHE_TTL_MS;
-
-    if (age >= ttl) {
-      // 超过 TTL，但在宽限期内且不是失败数据，仍返回（降级显示）
-      if (cache.data.apiUnavailable || age >= ttl + CACHE_GRACE_MS) {
-        debugLog('缓存过期', { age, ttl, grace: CACHE_GRACE_MS });
-        return null;
-      }
-      debugLog('使用宽限期缓存', { age, ttl });
-      return cache.data;
-    }
-
-    return cache.data;
+    return { cache, data: cache.data };
   } catch {
     debugLog('缓存读取失败');
-    return null;
+    return { cache: null, data: null };
   }
 }
 
 /**
- * 写入缓存
+ * 读取缓存（仅返回 UsageData）
+ * 兼容 glm-api.ts 的 getGlmUsage() 调用
+ */
+export function readCache(expectedProvider?: 'glm' | 'minimax'): UsageData | null {
+  return readRawCache(expectedProvider).data;
+}
+
+/**
+ * 判断是否需要刷新缓存
+ */
+export function shouldRefresh(cache: CacheFile | null): boolean {
+  if (!cache) return true;
+  // fetch 锁未超时，跳过（防止雷群）
+  if (cache.fetchingSince && Date.now() - cache.fetchingSince < FETCH_LOCK_TIMEOUT_MS) {
+    return false;
+  }
+  // 缓存超过刷新间隔，需要刷新
+  return Date.now() - cache.timestamp >= REFRESH_INTERVAL_MS;
+}
+
+/**
+ * 获取 fetch 锁
+ * 写入 fetchingSince 时间戳，其他进程看到后会跳过 API 调用
+ */
+export function acquireFetchLock(cachePath: string, existingCache: CacheFile | null): void {
+  const cache: CacheFile = existingCache ?? {
+    data: { tokenPercent: 0, apiUnavailable: true, provider: 'glm' },
+    timestamp: 0,
+  };
+  cache.fetchingSince = Date.now();
+
+  const cacheDir = join(homedir(), CACHE_DIR);
+  if (!existsSync(cacheDir)) mkdirSync(cacheDir, { recursive: true });
+
+  writeFileSync(cachePath, JSON.stringify(cache), 'utf-8');
+  debugLog('已获取 fetch 锁');
+}
+
+/**
+ * 释放 fetch 锁 + 写入新数据
+ * 不写入 fetchingSince = 释放锁
+ */
+export function releaseFetchLock(cachePath: string, data: UsageData, provider: string): void {
+  const cache: CacheFile = {
+    provider,
+    tokenFingerprint: getTokenFingerprint() ?? undefined,
+    data,
+    timestamp: Date.now(),
+  };
+  writeFileSync(cachePath, JSON.stringify(cache), 'utf-8');
+  debugLog('已释放 fetch 锁，写入新数据');
+}
+
+/**
+ * 写入缓存（兼容 glm-api.ts 的 getGlmUsage() 调用）
  */
 export function writeCache(data: UsageData, provider?: 'glm' | 'minimax'): void {
   const cachePath = getCachePath();
   const cacheDir = join(homedir(), CACHE_DIR);
 
   try {
-    // 确保缓存目录存在
-    if (!existsSync(cacheDir)) {
-      mkdirSync(cacheDir, { recursive: true });
-    }
+    if (!existsSync(cacheDir)) mkdirSync(cacheDir, { recursive: true });
 
     const cache: CacheFile = {
       provider: provider ?? data.provider,
@@ -111,7 +135,6 @@ export function writeCache(data: UsageData, provider?: 'glm' | 'minimax'): void 
       data,
       timestamp: Date.now(),
     };
-
     writeFileSync(cachePath, JSON.stringify(cache), 'utf-8');
   } catch {
     // 静默失败
@@ -122,24 +145,13 @@ export function writeCache(data: UsageData, provider?: 'glm' | 'minimax'): void 
  * 读取上下文缓存
  */
 export function readContextCache(): ContextCacheData | null {
-  const cachePath = getContextCachePath();
-
-  if (!existsSync(cachePath)) {
-    return null;
-  }
+  const cachePath = join(homedir(), CACHE_DIR, 'context-cache.json');
+  if (!existsSync(cachePath)) return null;
 
   try {
     const raw = readFileSync(cachePath, 'utf-8');
     const cache: ContextCacheData = JSON.parse(raw);
-
-    // 上下文缓存有效期 10 秒
-    const now = Date.now();
-    const age = now - cache.timestamp;
-
-    if (age >= 10_000) {
-      return null;
-    }
-
+    if (Date.now() - cache.timestamp >= 10_000) return null;
     return cache;
   } catch {
     return null;
@@ -150,15 +162,11 @@ export function readContextCache(): ContextCacheData | null {
  * 写入上下文缓存
  */
 export function writeContextCache(data: ContextCacheData): void {
-  const cachePath = getContextCachePath();
+  const cachePath = join(homedir(), CACHE_DIR, 'context-cache.json');
   const cacheDir = join(homedir(), CACHE_DIR);
 
   try {
-    // 确保缓存目录存在
-    if (!existsSync(cacheDir)) {
-      mkdirSync(cacheDir, { recursive: true });
-    }
-
+    if (!existsSync(cacheDir)) mkdirSync(cacheDir, { recursive: true });
     writeFileSync(cachePath, JSON.stringify(data), 'utf-8');
   } catch {
     // 静默失败
