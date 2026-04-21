@@ -6,7 +6,8 @@
 
 import https from 'https';
 
-// 全局 keepAlive Agent：守护进程整个生命周期复用同一组 TCP/TLS 连接
+// keepAlive Agent：复用 TLS 连接以减少握手开销
+// 注意：statusLine 模式下进程短暂存活，连接复用效果有限，主要在重试场景中生效
 const keepAliveAgent = new https.Agent({
   keepAlive: true,
   keepAliveMsecs: 30_000,   // 每 30 秒发送 TCP keepalive 探测

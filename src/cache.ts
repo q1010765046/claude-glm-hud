@@ -67,7 +67,7 @@ export function readRawCache(expectedProvider?: 'glm' | 'minimax'): {
 
 /**
  * 读取缓存（仅返回 UsageData）
- * 兼容 glm-api.ts 的 getGlmUsage() 调用
+ * 用于渲染前读取最新的 API 数据
  */
 export function readCache(expectedProvider?: 'glm' | 'minimax'): UsageData | null {
   return readRawCache(expectedProvider).data;
@@ -117,28 +117,6 @@ export function releaseFetchLock(cachePath: string, data: UsageData, provider: s
   };
   writeFileSync(cachePath, JSON.stringify(cache), 'utf-8');
   debugLog('已释放 fetch 锁，写入新数据');
-}
-
-/**
- * 写入缓存（兼容 glm-api.ts 的 getGlmUsage() 调用）
- */
-export function writeCache(data: UsageData, provider?: 'glm' | 'minimax'): void {
-  const cachePath = getCachePath();
-  const cacheDir = join(homedir(), CACHE_DIR);
-
-  try {
-    if (!existsSync(cacheDir)) mkdirSync(cacheDir, { recursive: true });
-
-    const cache: CacheFile = {
-      provider: provider ?? data.provider,
-      tokenFingerprint: getTokenFingerprint() ?? undefined,
-      data,
-      timestamp: Date.now(),
-    };
-    writeFileSync(cachePath, JSON.stringify(cache), 'utf-8');
-  } catch {
-    // 静默失败
-  }
 }
 
 /**

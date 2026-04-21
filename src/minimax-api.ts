@@ -3,8 +3,6 @@
  * 调用 MiniMax API 获取套餐余量
  */
 
-import { getAuthToken } from './config.js';
-import { readCache, writeCache } from './cache.js';
 import { UsageData } from './types.js';
 import { MINIMAX_API_BASE, MINIMAX_USAGE_ENDPOINT } from './constants.js';
 import { httpsGet, withRetry } from './http-agent.js';
@@ -131,38 +129,3 @@ export async function fetchMiniMaxApi(authToken: string): Promise<UsageData | nu
   return result;
 }
 
-/**
- * 获取 MiniMax 使用率数据（带缓存）
- */
-export async function getMiniMaxUsage(): Promise<UsageData | undefined> {
-  // 先尝试读取缓存
-  const cached = readCache('minimax');
-  if (cached) {
-    debugLog('缓存命中');
-    return cached;
-  }
-
-  // 获取 AUTH_TOKEN
-  const authToken = getAuthToken();
-  if (!authToken) {
-    debugLog('无 AUTH_TOKEN');
-    return undefined;
-  }
-
-  // 调用 API
-  const data = await fetchMiniMaxApi(authToken);
-
-  if (data) {
-    writeCache(data, 'minimax');
-    return data;
-  }
-
-  // API 调用失败，返回失败标记
-  const failureData: UsageData = {
-    tokenPercent: 0,
-    apiUnavailable: true,
-    provider: 'minimax',
-  };
-  writeCache(failureData, 'minimax');
-  return undefined;
-}

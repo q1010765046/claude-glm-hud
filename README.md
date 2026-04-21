@@ -3,7 +3,7 @@
 > Claude Code 状态栏插件：实时显示智谱 AI / MiniMax Token 使用率和上下文窗口信息
 > 完全使用 ClaudeCode + GLM-4.7 生产的工具
 
-![Version](https://img.shields.io/badge/version-1.1.0-blue)
+![Version](https://img.shields.io/badge/version-1.2.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 ## 功能特性
@@ -13,10 +13,10 @@
 - **剩余时间** - 显示套餐刷新倒计时
 - **MCP/语音/图像** - 智谱模式显示 MCP 和上下文，MiniMax 模式显示语音和图像
 - **彩色进度条** - 直观的薄荷绿进度条可视化
-- **智能缓存** - 60 秒 TTL + 3 分钟宽限期，减少 API 调用
+- **智能缓存** - 30 秒刷新间隔，fetch 锁防雷群请求
 - **Token 指纹** - 切换 API 账号时自动失效旧缓存
 - **连接复用** - keepAlive 复用 TLS 连接，降低握手开销
-- **后台守护进程** - 独立后台进程定时获取数据，不阻塞状态栏
+- **内嵌刷新** - statusLine 直接调 API，无后台进程
 
 ## 显示效果
 
@@ -119,17 +119,15 @@ DEBUG=1 npm run dev
 
 ```
 src/
-├── index.ts           # 主入口（双模式：statusLine / daemon）
+├── index.ts           # 主入口（statusLine 内嵌 API 刷新）
 ├── types.ts           # 类型定义（StdinData, UsageData, CacheFile 等）
-├── constants.ts       # 常量（API 端点、缓存 TTL、颜色、守护进程配置）
+├── constants.ts       # 常量（API 端点、刷新间隔、颜色）
 ├── stdin.ts           # stdin JSON 解析（带超时保护）
 ├── config.ts          # 配置管理（读取 settings.json，进程内缓存）
 ├── http-agent.ts      # HTTP 连接复用（keepAlive）+ 公共重试逻辑
 ├── glm-api.ts         # 智谱 AI API 集成
 ├── minimax-api.ts     # MiniMax API 集成
-├── cache.ts           # 跨进程文件缓存（TTL + 宽限期 + provider 校验）
-├── daemon-manager.ts  # 守护进程生命周期管理（启动/心跳/PID 文件）
-├── daemon.ts          # 守护进程工作循环（定时获取 API 数据）
+├── cache.ts           # 文件缓存 + fetch 锁机制（防雷群）
 └── render/            # 渲染模块
     ├── index.ts       # 渲染协调器
     └── utils.ts       # 工具函数（进度条、时间格式化、Token 格式化）
@@ -151,7 +149,7 @@ src/
 
 ### 切换 API 后显示旧数据
 
-切换供应商或 API Token 后，缓存会通过 provider 校验和 Token 指纹自动失效。如仍未更新，等待 60 秒缓存过期后自动刷新，或手动删除：
+切换供应商或 API Token 后，缓存会通过 provider 校验和 Token 指纹自动失效。如仍未更新，等待 30 秒缓存过期后自动刷新，或手动删除：
 ```bash
 rm ~/.claude/plugins/claude-glm-hud/glm-usage-cache.json
 ```

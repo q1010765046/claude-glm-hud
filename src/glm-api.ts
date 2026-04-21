@@ -3,8 +3,6 @@
  * 调用智谱 AI API 获取 Token 使用情况
  */
 
-import { getAuthToken } from './config.js';
-import { readCache, writeCache } from './cache.js';
 import { UsageData } from './types.js';
 import { GLM_API_BASE, GLM_USAGE_ENDPOINT } from './constants.js';
 import { httpsGet, withRetry } from './http-agent.js';
@@ -114,39 +112,3 @@ export async function fetchGlmApi(authToken: string): Promise<UsageData | null> 
   return result;
 }
 
-/**
- * 获取 GLM 使用率数据（带缓存）
- */
-export async function getGlmUsage(): Promise<UsageData | undefined> {
-  // 先尝试读取缓存
-  const cached = readCache('glm');
-  if (cached) {
-    debugLog('缓存命中');
-    return cached;
-  }
-
-  // 获取 AUTH_TOKEN
-  const authToken = getAuthToken();
-  if (!authToken) {
-    debugLog('无 AUTH_TOKEN');
-    return undefined;
-  }
-
-  // 调用 API
-  const data = await fetchGlmApi(authToken);
-
-  if (data) {
-    // 写入缓存，指定 provider
-    writeCache(data, 'glm');
-    return data;
-  }
-
-  // API 调用失败，返回失败标记
-  const failureData: UsageData = {
-    tokenPercent: 0,
-    apiUnavailable: true,
-    provider: 'glm',
-  };
-  writeCache(failureData, 'glm');
-  return undefined;
-}
