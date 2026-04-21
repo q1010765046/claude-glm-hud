@@ -42,8 +42,9 @@ export interface UsageData {
  * 缓存文件结构
  */
 export interface CacheFile {
-  provider?: 'glm' | 'minimax';  // 新增：区分数据来源
-  tokenFingerprint?: string;     // Token 指纹，切换账号时缓存自动失效
+  provider?: 'glm' | 'minimax';
+  tokenFingerprint?: string;
+  fetchingSince?: number;     // fetch 锁时间戳（防雷群）
   data: UsageData;
   timestamp: number;
 }
