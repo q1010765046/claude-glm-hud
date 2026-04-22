@@ -10,7 +10,7 @@ GLM-HUD 是一个 Claude Code 状态栏插件，实时显示智谱 AI / MiniMax 
 src/
 ├── index.ts           # 主入口（statusLine 内嵌 API 刷新）
 ├── types.ts           # 类型定义（StdinData, UsageData, CacheFile 等）
-├── constants.ts       # 常量（API 端点、刷新间隔、颜色）
+├── constants.ts       # 常量（API 端点、刷新间隔、颜色、进度条宽度）
 ├── stdin.ts           # stdin JSON 解析（带 3 秒超时保护）
 ├── config.ts          # 配置管理（读取 settings.json，进程内缓存）
 ├── http-agent.ts      # HTTP 连接复用（keepAlive）+ 公共重试逻辑
@@ -18,8 +18,8 @@ src/
 ├── minimax-api.ts     # MiniMax API 集成
 ├── cache.ts           # 文件缓存 + fetch 锁机制（防雷群）
 └── render/            # 渲染模块
-    ├── index.ts       # 渲染协调器
-    └── utils.ts       # 工具函数（进度条、时间格式化、Token 格式化）
+    ├── index.ts       # 渲染协调器（双行对齐布局）
+    └── utils.ts       # 工具函数（进度条、5h/周时间格式化、Token 格式化）
 ```
 
 ## 数据流
@@ -87,11 +87,11 @@ stdout (状态栏显示)
 DEBUG=1 npm run dev
 ```
 
-### 添加新的渲染行
+### 添加新的渲染段
 
-1. 在 `src/render/` 创建新文件
-2. 实现 `renderXxxLine(ctx: RenderContext): string | null` 函数
-3. 在 `src/render/index.ts` 中导入并调用
+1. 在 `src/render/index.ts` 的 line1 或 line2 数组中添加新元素
+2. 使用 `formatProgressBar(percent)` 生成进度条
+3. 格式：`🏷️标签:${formatProgressBar(pct)} ${pct.toString().padStart(3)}%`
 
 ### 修改 API 端点
 

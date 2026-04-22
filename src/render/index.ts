@@ -1,77 +1,93 @@
 /**
- * 渲染协调器（保持老版本显示格式 + 上下文）
+ * 渲染协调器（双行对齐版）
+ * 第1行：5h Token │ 5h 剩余 │ MCP
+ * 第2行：周 Token │ 周 剩余 │ 上下文
  */
 
 import { RenderContext, StdinData, ContextCacheData } from '../types.js';
-import { formatProgressBar, formatResetTime, formatDuration, formatTokens } from './utils.js';
+import { formatProgressBar, formatResetTime, formatWeeklyResetTime, formatDuration, formatTokens } from './utils.js';
 import { readContextCache, writeContextCache } from '../cache.js';
+import { TIME_PAD_WIDTH, COLOR_SET } from '../constants.js';
+
+/** 默认占位文本（无数据时） */
+const NO_TIME = '--';
 
 /**
- * 渲染输出（老版本格式 + 上下文）
+ * 渲染输出（双行对齐版）
  */
 export function render(ctx: RenderContext): void {
-  const { stdin, usageData } = ctx;  // 重命名 glmUsage -> usageData
-
-  const parts: string[] = [];
+  const { stdin, usageData } = ctx;
   const isMiniMax = usageData?.provider === 'minimax';
 
-  // 1. Token 进度条（主显示5小时，括号内显示周限额）
-  if (usageData && usageData.tokenPercent !== null) {
-    let tokenStr = `🔋Token:${formatProgressBar(usageData.tokenPercent)} ${usageData.tokenPercent.toString().padStart(3)}%`;
-    if (usageData.weeklyTokenPercent !== undefined) {
-      tokenStr += ` (周${usageData.weeklyTokenPercent.toString().padStart(3)}%)`;
+  // ========== 第1行：5h Token │ 5h 剩余 │ MCP ==========
+  const line1: string[] = [];
+
+  // 1-1. 5h Token 进度条
+  const tokenPct5h = usageData?.tokenPercent ?? 0;
+  line1.push(`🔋5h:${formatProgressBar(tokenPct5h)} ${tokenPct5h.toString().padStart(3)}%`);
+
+  // 1-2. 5h 剩余时间进度条
+  if (usageData?.resetTime) {
+    const info = formatResetTime(usageData.resetTime);
+    if (info) {
+      line1.push(`🔄5h:${formatProgressBar(info.percent)} ${info.text.padStart(TIME_PAD_WIDTH)}`);
+    } else {
+      line1.push(`🔄5h:${formatProgressBar(0)} ${NO_TIME.padStart(TIME_PAD_WIDTH)}`);
     }
-    parts.push(tokenStr);
+  } else {
+    line1.push(`🔄5h:${formatProgressBar(0)} ${NO_TIME.padStart(TIME_PAD_WIDTH)}`);
   }
 
-  // 2. 剩余时间进度条（主显示5小时，括号内显示周限额刷新时间）
-  if (usageData && usageData.resetTime) {
-    const resetInfo = formatResetTime(usageData.resetTime);
-    if (resetInfo) {
-      let resetStr = `🔄剩余:${formatProgressBar(resetInfo.percent)} ${resetInfo.text}`;
-      if (usageData.weeklyResetTime) {
-        const weeklyDelta = Math.max(0, Math.floor((usageData.weeklyResetTime - Date.now()) / 1000));
-        if (weeklyDelta > 0) {
-          resetStr += ` (${formatDuration(weeklyDelta)})`;
-        }
-      }
-      parts.push(resetStr);
+  // 1-3. MCP / 语音 进度条
+  const mcpPct = usageData?.mcpPercent ?? 0;
+  const mcpLabel = isMiniMax ? '语音' : 'MCP';
+  line1.push(`🌐${mcpLabel}:${formatProgressBar(mcpPct)} ${mcpPct.toString().padStart(3)}%`);
+
+  // ========== 第2行：周 Token │ 周 剩余 │ 上下文 ==========
+  const line2: string[] = [];
+
+  // 2-1. 周 Token 进度条
+  const weeklyTokenPct = usageData?.weeklyTokenPercent ?? 0;
+  line2.push(`🔋周:${formatProgressBar(weeklyTokenPct)} ${weeklyTokenPct.toString().padStart(3)}%`);
+
+  // 2-2. 周剩余时间进度条
+  if (usageData?.weeklyResetTime) {
+    const info = formatWeeklyResetTime(usageData.weeklyResetTime);
+    if (info) {
+      line2.push(`🔄周:${formatProgressBar(info.percent)} ${info.text.padStart(TIME_PAD_WIDTH)}`);
+    } else {
+      line2.push(`🔄周:${formatProgressBar(0)} ${NO_TIME.padStart(TIME_PAD_WIDTH)}`);
     }
+  } else {
+    line2.push(`🔄周:${formatProgressBar(0)} ${NO_TIME.padStart(TIME_PAD_WIDTH)}`);
   }
 
-  // 3. MCP/语音 进度条
-  if (usageData && usageData.mcpPercent !== undefined) {
-    const label = isMiniMax ? '语音' : 'MCP';
-    const mcpStr = `🌐${label}:${formatProgressBar(usageData.mcpPercent)} ${usageData.mcpPercent.toString().padStart(3)}%`;
-    parts.push(mcpStr);
-  }
-
-  // 4. 上下文/图像 进度条
+  // 2-3. 上下文 / 图像 进度条
   if (isMiniMax && usageData?.contextPercent !== undefined) {
     // MiniMax 模式：显示图像使用率
-    const imageStr = `📊图像:${formatProgressBar(usageData.contextPercent)} ${usageData.contextPercent.toString().padStart(3)}%`;
-    parts.push(imageStr);
+    const imgPct = usageData.contextPercent;
+    line2.push(`📊图像:${formatProgressBar(imgPct)} ${imgPct.toString().padStart(3)}%`);
   } else {
-    // 智谱模式：显示上下文窗口
-    const contextInfo = renderContextInfo(stdin);
-    if (contextInfo) {
-      parts.push(contextInfo);
-    }
+    // 智谱模式：显示上下文窗口（无数据时显示 0%）
+    const ctxStr = renderContextInfo(stdin);
+    line2.push(ctxStr);
   }
 
-  // 组合内容（老版本格式：用 │ 分隔）
-  if (parts.length > 0) {
-    const content = parts.join(' │ ');
-    console.log(content);
-  }
+  // 输出两行（用 │ 分隔对齐，整行统一绿色）
+  console.log(`${COLOR_SET}${line1.join(' │ ')}`);
+  console.log(`${COLOR_SET}${line2.join(' │ ')}`);
 }
 
 /**
- * 渲染上下文信息（新增功能）
+ * 渲染上下文信息（无数据时返回 0% 而非 null）
  */
-function renderContextInfo(stdin: StdinData): string | null {
+function renderContextInfo(stdin: StdinData): string {
   const cw = stdin.context_window;
-  if (!cw) return null;
+
+  // 无上下文数据时返回 0% 占位
+  if (!cw) {
+    return `📊CTX:${formatProgressBar(0)}   0%`;
+  }
 
   // 计算总 Token 使用量（包含所有类型）
   const usage = cw.current_usage;
@@ -103,11 +119,9 @@ function renderContextInfo(stdin: StdinData): string | null {
   if ((totalUsed === 0 || percent === 0 || percent === null) && stdin.model?.display_name) {
     const cached = readContextCache();
     if (cached) {
-      // 使用缓存的数据
       displayUsed = cached.totalUsed;
       displayPercent = Math.round((cached.totalUsed / cached.contextWindowSize) * 100);
 
-      // 调试输出
       if (process.env.DEBUG === '1') {
         console.error('[GLM-HUD Debug] 使用缓存数据:', {
           cached,
@@ -131,10 +145,8 @@ function renderContextInfo(stdin: StdinData): string | null {
     });
   }
 
-  if (displayPercent === null || displayPercent === 0) return null;
+  // 无数据时显示 0%（不再返回 null）
+  const finalPercent = displayPercent ?? 0;
 
-  const usedStr = formatTokens(displayUsed);
-  const totalStr = formatTokens(total);
-
-  return `📊上下文:${formatProgressBar(displayPercent)} ${displayPercent}% (${usedStr}/${totalStr})`;
+  return `📊CTX:${formatProgressBar(finalPercent)} ${finalPercent.toString().padStart(3)}%`;
 }

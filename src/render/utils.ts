@@ -1,11 +1,11 @@
 /**
- * 渲染工具函数（与老版本保持一致）
+ * 渲染工具函数（双行对齐版）
  */
 
-import { COLOR_SET, COLOR_RESET, BAR_WIDTH, CYCLE_SECONDS } from '../constants.js';
+import { COLOR_SET, COLOR_RESET, BAR_WIDTH, CYCLE_SECONDS, WEEKLY_CYCLE_SECONDS, TIME_PAD_WIDTH } from '../constants.js';
 
 /**
- * 格式化进度条（与老版本一致）
+ * 格式化进度条
  */
 export function formatProgressBar(percent: number): string {
   const filled = Math.floor((percent / 100) * BAR_WIDTH);
@@ -14,7 +14,7 @@ export function formatProgressBar(percent: number): string {
 }
 
 /**
- * 格式化重置时间
+ * 格式化5小时重置时间
  */
 export function formatResetTime(resetTimestampMs: number): { text: string; percent: number } | null {
   if (!resetTimestampMs) return null;
@@ -40,7 +40,32 @@ export function formatResetTime(resetTimestampMs: number): { text: string; perce
 }
 
 /**
+ * 格式化周重置时间（新增：用于第2行周剩余进度条）
+ */
+export function formatWeeklyResetTime(resetTimestampMs: number): { text: string; percent: number } | null {
+  if (!resetTimestampMs) return null;
+
+  try {
+    const delta = resetTimestampMs - Date.now();
+    const totalSeconds = Math.max(0, Math.floor(delta / 1000));
+
+    if (totalSeconds <= 0) {
+      return { text: '已重置', percent: 0 };
+    }
+
+    // 7天为刷新周期
+    const usedPercent = Math.min(100, Math.max(0, Math.floor((WEEKLY_CYCLE_SECONDS - totalSeconds) * 100 / WEEKLY_CYCLE_SECONDS)));
+
+    const timeText = formatDuration(totalSeconds);
+    return { text: timeText, percent: usedPercent };
+  } catch {
+    return null;
+  }
+}
+
+/**
  * 格式化时间间隔（英文缩写：d/h/m）
+ * 有天数时省略分钟，控制最大长度为6字符
  */
 export function formatDuration(totalSeconds: number): string {
   const days = Math.floor(totalSeconds / 86400);
@@ -48,9 +73,14 @@ export function formatDuration(totalSeconds: number): string {
   const minutes = Math.floor((totalSeconds % 3600) / 60);
 
   const parts: string[] = [];
-  if (days > 0) parts.push(`${days}d`);
-  if (hours > 0) parts.push(`${hours}h`);
-  if (minutes > 0 || (days === 0 && hours === 0)) parts.push(`${minutes}m`);
+  if (days > 0) {
+    parts.push(`${days}d`);
+    if (hours > 0) parts.push(`${hours}h`);
+    // 有天数时省略分钟，避免文本过长
+  } else {
+    if (hours > 0) parts.push(`${hours}h`);
+    if (minutes > 0 || hours === 0) parts.push(`${minutes}m`);
+  }
 
   return parts.length > 0 ? parts.join('') : '0m';
 }
