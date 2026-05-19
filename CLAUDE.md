@@ -2,7 +2,7 @@
 
 ## 项目概述
 
-GLM-HUD 是一个 Claude Code 状态栏插件，实时显示智谱 AI / MiniMax Token 使用率和上下文窗口信息。
+GLM-HUD 是一个 Claude Code 状态栏插件，实时显示智谱 AI / MiniMax Token 剩余配额和上下文窗口信息。
 
 ## 架构
 
@@ -19,7 +19,7 @@ src/
 ├── cache.ts           # 文件缓存 + fetch 锁机制（防雷群）
 └── render/            # 渲染模块
     ├── index.ts       # 渲染协调器（双行对齐布局）
-    └── utils.ts       # 工具函数（进度条、5h/周时间格式化、Token 格式化）
+    └── utils.ts       # 工具函数（5h/周时间格式化、Token 格式化）
 ```
 
 ## 数据流
@@ -68,8 +68,8 @@ stdout (状态栏显示)
 
 ### 多供应商支持
 
-- 智谱 AI（GLM）：5 小时/周限额、MCP 使用率
-- MiniMax：Token 使用率、语音、图像使用率
+- 智谱 AI（GLM）：5 小时/周限额、MCP 剩余
+- MiniMax：Token 剩余、语音、图像剩余
 - 通过 `settings.json` 中的 `ANTHROPIC_MODEL` 自动识别
 
 ### HTTP 连接管理

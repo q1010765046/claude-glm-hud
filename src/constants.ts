@@ -19,11 +19,8 @@ export const COLOR_RGB = "134;239;172";
 export const COLOR_SET = `\x1b[38;2;${COLOR_RGB}m`;
 export const COLOR_RESET = "\x1b[0m";
 
-// 进度条配置
+// 进度条配置（已弃用，保留兼容）
 export const BAR_WIDTH = 25;
-
-// 时间文本对齐宽度（padStart 用）
-export const TIME_PAD_WIDTH = 6;
 
 // 5小时周期（秒）
 export const CYCLE_SECONDS = 18000;

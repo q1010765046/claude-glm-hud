@@ -1,17 +1,8 @@
 /**
- * 渲染工具函数（双行对齐版）
+ * 渲染工具函数
  */
 
-import { COLOR_SET, COLOR_RESET, BAR_WIDTH, CYCLE_SECONDS, WEEKLY_CYCLE_SECONDS, TIME_PAD_WIDTH } from '../constants.js';
-
-/**
- * 格式化进度条
- */
-export function formatProgressBar(percent: number): string {
-  const filled = Math.floor((percent / 100) * BAR_WIDTH);
-  const empty = BAR_WIDTH - filled;
-  return `${COLOR_SET}[${'█'.repeat(filled)}${'░'.repeat(empty)}]`;
-}
+import { CYCLE_SECONDS, WEEKLY_CYCLE_SECONDS } from '../constants.js';
 
 /**
  * 格式化5小时重置时间
