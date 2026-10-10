@@ -54,6 +54,33 @@ export function getAnthropicModel(): string | null {
 }
 
 /**
+ * 从 settings.json 获取 ANTHROPIC_BASE_URL
+ */
+export function getBaseUrl(): string | null {
+  const settings = loadSettings();
+  const env = settings?.env as Record<string, unknown> | undefined;
+  // settings.json 优先（cc-switch 热切换即时生效），shell 环境变量兜底
+  return (env?.ANTHROPIC_BASE_URL as string) ?? process.env.ANTHROPIC_BASE_URL ?? null;
+}
+
+/**
+ * 判断 baseURL 是否为智谱域名（bigmodel.cn / z.ai）
+ * cc-switch 切换到其他供应商时返回 false，HUD 隐藏
+ */
+export function isZhipuBaseUrl(url: string | null): boolean {
+  if (!url) return false;
+  // 解析 hostname 后精确匹配，避免裸子串误命中（如 quiz.ai、网关路径 /z.ai/v1）
+  let host: string;
+  try {
+    host = new URL(url).hostname.toLowerCase();
+  } catch {
+    return false;
+  }
+  return host === 'z.ai' || host.endsWith('.z.ai')
+    || host === 'bigmodel.cn' || host.endsWith('.bigmodel.cn');
+}
+
+/**
  * 判断当前是否为 MiniMax 模型
  */
 export function isMiniMaxModel(): boolean {

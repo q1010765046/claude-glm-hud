@@ -8,7 +8,7 @@
 
 import { readStdin } from './stdin.js';
 import { render } from './render/index.js';
-import { isMiniMaxModel, getAuthToken } from './config.js';
+import { isMiniMaxModel, getAuthToken, getBaseUrl, isZhipuBaseUrl } from './config.js';
 import {
   readRawCache,
   readCache,
@@ -60,6 +60,8 @@ async function statusLineMode(): Promise<void> {
 }
 
 async function main(): Promise<void> {
+  // 非智谱 baseURL 时直接退出（stdout 无输出），隐藏状态栏
+  if (!isZhipuBaseUrl(getBaseUrl())) return;
   await statusLineMode();
 }
 
